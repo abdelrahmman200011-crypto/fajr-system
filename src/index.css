@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  direction: rtl;
+}
+
+@keyframes view-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.view-enter {
+  animation: view-fade-up 0.35s ease-out both;
+}
+
+body {
+  font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+  @apply bg-gray-50 text-gray-800 antialiased;
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+
+  body {
+    background: #fff !important;
+  }
+
+  /* Hide everything except the official manifests (portals under <body>) */
+  body *:not(#print-manifest):not(#print-manifest *):not(#print-invoice):not(#print-invoice *) {
+    display: none !important;
+  }
+
+  #print-manifest,
+  #print-invoice {
+    display: block !important;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply rounded-2xl border border-white/60 bg-white/40 backdrop-blur-xl;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.12);
+  }
+
+  .input-field {
+    @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 active:scale-95;
+    box-shadow: 0 6px 18px -6px rgba(5, 150, 105, 0.5);
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 transition hover:border-emerald-500 hover:text-emerald-600;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-gray-300;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-emerald-500;
+}
