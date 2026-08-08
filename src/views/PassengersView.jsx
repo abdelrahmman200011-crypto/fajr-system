@@ -140,7 +140,7 @@ export default function PassengersView({
               <option value="">اختر الرحلة</option>
               {trips.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.name} — {t.destination}
+                  [{t.tripNumber}] — {t.destination}
                 </option>
               ))}
             </select>

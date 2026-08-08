@@ -1,12 +1,8 @@
 import {
   LayoutDashboard,
-  Boxes,
   Route,
   Users,
   ReceiptText,
-  Hotel,
-  LogOut,
-  ShieldCheck,
   X,
   Store,
 } from 'lucide-react';
@@ -14,14 +10,13 @@ import {
 export const NAV_TABS = [
   { id: 'dashboard', label: 'الرئيسية', icon: LayoutDashboard },
   { id: 'booking', label: 'نقطة البيع الموحدة', icon: Store },
-  { id: 'packages', label: 'الخدمات والباقات', icon: Boxes },
   { id: 'trips', label: 'الرحلات', icon: Route },
-  { id: 'rooms', label: 'الفنادق والغرف', icon: Hotel },
   { id: 'passengers', label: 'المسافرون', icon: Users },
   { id: 'invoices', label: 'الفواتير والمالية', icon: ReceiptText },
 ];
 
 export default function Sidebar({ active, onNavigate, open, onClose }) {
+  const logoUrl = import.meta.env.BASE_URL + 'logo.png';
   return (
     <>
       {/* Mobile overlay */}
@@ -41,7 +36,7 @@ export default function Sidebar({ active, onNavigate, open, onClose }) {
         <div className="flex items-center justify-between px-6 pb-6 pt-7">
           <div className="flex items-center gap-3">
             <div className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-lg shadow-emerald-900/10 ring-1 ring-emerald-100">
-              <img src="/logo.png" alt="فجر النسك" className="h-12 w-12 object-contain p-1" />
+              <img src={logoUrl} alt="فجر النسك" className="h-12 w-12 object-contain p-1" />
             </div>
             <div className="leading-tight">
               <h1 className="text-lg font-extrabold text-emerald-800">
@@ -62,7 +57,7 @@ export default function Sidebar({ active, onNavigate, open, onClose }) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 space-y-1.5 overflow-y-auto px-4">
+        <nav className="flex-1 space-y-1.5 overflow-y-auto px-4 pb-6">
           <p className="px-3 pb-2 text-xs font-bold uppercase tracking-wider text-gray-400">
             القائمة الرئيسية
           </p>
@@ -99,34 +94,6 @@ export default function Sidebar({ active, onNavigate, open, onClose }) {
             );
           })}
         </nav>
-
-        {/* User card */}
-        <div className="px-4 pb-6 pt-4">
-          <div className="rounded-2xl border border-white/60 bg-gradient-to-br from-emerald-50/80 to-amber-50/60 p-4 backdrop-blur">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-base font-extrabold text-white shadow-md shadow-amber-600/30">
-                م
-              </div>
-              <div className="flex-1 leading-tight">
-                <p className="text-sm font-extrabold text-gray-800">
-                  مدير النظام
-                </p>
-                <p className="text-xs font-medium text-gray-500">
-                  admin@fajr.com
-                </p>
-              </div>
-            </div>
-            <div className="mt-3 flex items-center justify-between border-t border-emerald-200/50 pt-3">
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700">
-                <ShieldCheck className="h-4 w-4" />
-                صلاحيات كاملة
-              </span>
-              <button className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-500">
-                <LogOut className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        </div>
       </aside>
     </>
   );

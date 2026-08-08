@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import {
   formatSAR,
-  packagePrice,
   familyMembers,
   familyHead,
   invoiceTotals,
@@ -44,7 +43,6 @@ export default function InvoicesView({
 }) {
   const [passengerId, setPassengerId] = useState('');
   const [tripId, setTripId] = useState('');
-  const [packageId, setPackageId] = useState('');
   const [paid, setPaid] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [checkedIds, setCheckedIds] = useState(() => new Set());
@@ -95,11 +93,8 @@ export default function InvoicesView({
     [passengers]
   );
 
-  const selectedPackage = packages.find((p) => p.id === Number(packageId));
-  const selectedTrip = trips.find((t) => t.id === Number(tripId));
-  const perPerson = selectedPackage
-    ? packagePrice(selectedPackage, services)
-    : 0;
+  const selectedTrip = trips.find((t) => t.id === tripId) || null;
+  const perPerson = Number(selectedTrip?.price) || 0;
 
   const selectedPassenger =
     passengers.find((p) => p.id === passengerId) || null;
@@ -128,12 +123,11 @@ export default function InvoicesView({
   const methodRequired = paidValue > 0;
 
   const remainingSeats = (trip) =>
-    Math.max(trip.capacity - trip.bookedCount, 0);
+    Math.max(trip.capacity - (trip.bookedCount || 0), 0);
 
   const canIssue = Boolean(
     passengerId &&
       tripId &&
-      packageId &&
       checkedCount > 0 &&
       paidValue >= 0 &&
       paidValue <= total &&
@@ -145,7 +139,6 @@ export default function InvoicesView({
   const resetForm = () => {
     setPassengerId('');
     setTripId('');
-    setPackageId('');
     setPaid('');
     setPaymentMethod('');
     setCheckedIds(new Set());
@@ -176,7 +169,7 @@ export default function InvoicesView({
 
   const issueInvoice = (e) => {
     e.preventDefault();
-    if (!passengerId || !packageId || !tripId || checkedCount === 0) return;
+    if (!passengerId || !tripId || checkedCount === 0) return;
     if (
       !selectedTrip ||
       selectedTrip.bookedCount + checkedCount > selectedTrip.capacity
@@ -193,8 +186,7 @@ export default function InvoicesView({
     if (!canIssue) return;
     onAddInvoice({
       passengerId,
-      tripId: Number(tripId),
-      packageId: Number(packageId),
+      tripId,
       paid: paidValue,
       paidAmount: paidValue,
       paymentMethod: methodRequired ? paymentMethod : '',
@@ -237,7 +229,7 @@ export default function InvoicesView({
               إصدار فاتورة جديدة
             </h3>
             <p className="text-sm text-gray-500">
-              اربط معتمراً برحلة وباقة، ثم سجّل المدفوع ويُحسب المتبقي تلقائياً
+              اربط معتمراً برحلة، ثم سجّل المدفوع ويُحسب المتبقي تلقائياً
             </p>
           </div>
         </div>
@@ -278,7 +270,7 @@ export default function InvoicesView({
                   const isFull = free <= 0;
                   return (
                     <option key={t.id} value={t.id} disabled={isFull}>
-                      {t.name} · {t.destination} (
+                      [{t.tripNumber}] {t.destination} · {formatSAR(t.price)} (
                       {isFull
                         ? 'مكتملة العدد 🔒'
                         : `متبقي ${free} ${seatsLabel(free)}`}
@@ -297,20 +289,12 @@ export default function InvoicesView({
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-semibold text-gray-700">
-                اختيار الباقة
+                سعر الرحلة للفرد
               </label>
-              <select
-                value={packageId}
-                onChange={(e) => setPackageId(e.target.value)}
-                className={inputClass}
-              >
-                <option value="">— اختر الباقة —</option>
-                {packages.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({formatSAR(packagePrice(p, services))})
-                  </option>
-                ))}
-              </select>
+              <div className="flex h-11 items-center justify-between rounded-xl border border-emerald-200/70 bg-emerald-50/70 px-4 text-sm font-extrabold text-emerald-900">
+                <span>{formatSAR(perPerson)}</span>
+                <Calculator className="h-4 w-4 text-emerald-600" />
+              </div>
             </div>
           </div>
 
@@ -422,10 +406,10 @@ export default function InvoicesView({
             </div>
           </div>
 
-          {packageId && paidValue > total && (
+          {paidValue > total && (
             <p className="mt-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600">
               <CircleAlert className="h-4 w-4" />
-              المدفوع أكبر من إجمالي الباقة، راجع القيمة
+              المدفوع أكبر من إجمالي الفاتورة، راجع القيمة
             </p>
           )}
 
@@ -504,7 +488,7 @@ export default function InvoicesView({
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="truncate text-sm font-bold text-gray-800">
-                    {t.name}
+                    رحلة {t.tripNumber} · {t.destination}
                   </p>
                   {isFull ? (
                     <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-50 px-2.5 py-0.5 text-[10px] font-extrabold text-red-600 ring-1 ring-red-200">
@@ -568,7 +552,7 @@ export default function InvoicesView({
                 <th className="px-6 py-3.5 text-right">رقم الفاتورة</th>
                 <th className="px-6 py-3.5 text-right">المسافر</th>
                 <th className="px-6 py-3.5 text-right">الرحلة</th>
-                <th className="px-6 py-3.5 text-right">الباقة</th>
+                <th className="px-6 py-3.5 text-right">السعر للفرد</th>
                 <th className="px-6 py-3.5 text-right">الإجمالي</th>
                 <th className="px-6 py-3.5 text-right">المدفوع</th>
                 <th className="px-6 py-3.5 text-right">المتبقي</th>
@@ -622,14 +606,14 @@ export default function InvoicesView({
                       </div>
                     </td>
                     <td className="px-6 py-4 font-semibold text-gray-600">
-                      {trip?.name || '—'}
+                      {trip?.tripNumber || '—'}
                     </td>
                     <td className="px-6 py-4">
                       <p className="font-semibold text-gray-700">
-                        {pkg?.name || '—'}
+                        {formatSAR(perPerson)}
                       </p>
                       <p className="mt-0.5 text-xs font-medium text-gray-400">
-                        {paxCount} أفراد × {formatSAR(perPerson)}
+                        {paxCount} أفراد × {formatSAR(perPerson)} للفرد
                       </p>
                     </td>
                     <td className="px-6 py-4 font-extrabold text-emerald-900">

@@ -26,7 +26,7 @@ import {
   Printer,
   Hotel,
 } from 'lucide-react';
-import { packagePrice, formatSAR, calculateTripStatus, invoiceTotals } from '../data/mockData';
+import { formatSAR, calculateTripStatus, invoiceTotals } from '../data/mockData';
 
 const paymentStyles = {
   'مدفوع': 'bg-emerald-50 text-emerald-700 ring-emerald-200',
@@ -46,13 +46,15 @@ const invoiceMethod = (inv) =>
   'كاش';
 
 const emptyTrip = {
-  name: '',
+  tripNumber: '',
   destination: '',
+  gatheringPoint: '',
   departure: '',
   returnDate: '',
   time: '10:00',
   capacity: 49,
-  assignedHotelId: '',
+  hotelName: '',
+  price: '',
   driverName: '',
   driverIqama: '',
   driverPhone: '',
@@ -70,7 +72,6 @@ export default function TripsView({
   invoices,
   packages,
   services,
-  hotels,
   currentUser,
   onAddTrip,
   onDeleteTrip,
@@ -92,7 +93,6 @@ export default function TripsView({
         invoices={invoices}
         packages={packages}
         services={services}
-        hotels={hotels}
         onBack={() => {
           setSelectedTripId(null);
           setExpanded(null);
@@ -105,8 +105,9 @@ export default function TripsView({
 
   const submit = (e) => {
     e.preventDefault();
-    if (!trip.name.trim() || !trip.destination.trim() || !trip.departure) return;
-    onAddTrip(trip);
+    if (!trip.tripNumber.trim() || !trip.destination.trim() || !trip.departure) return;
+    if (trip.price !== '' && Number.isNaN(Number(trip.price))) return;
+    onAddTrip({ ...trip, price: Number(trip.price) || 0 });
     setTrip(emptyTrip);
   };
 
@@ -114,11 +115,11 @@ export default function TripsView({
 
   const occupied = (t) =>
     t.capacity > 0
-      ? Math.min(Math.round((t.bookedCount / t.capacity) * 100), 100)
+      ? Math.min(Math.round(((t.bookedCount || 0) / t.capacity) * 100), 100)
       : 0;
 
   const barColor = (t) =>
-    t.bookedCount >= t.capacity
+    (t.bookedCount || 0) >= t.capacity
       ? 'bg-gradient-to-l from-red-400 to-rose-500'
       : t.bookedCount >= t.capacity * 0.75
         ? 'bg-gradient-to-l from-amber-400 to-orange-500'
@@ -150,15 +151,27 @@ export default function TripsView({
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <label className={labelClass}>اسم الرحلة</label>
-                <input
-                  type="text"
-                  value={trip.name}
-                  onChange={(e) => set('name', e.target.value)}
-                  placeholder="مثال: رحلة العمرة الرابعة"
-                  className={inputClass}
-                />
+              <div className="sm:col-span-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={labelClass}>رقم الرحلة</label>
+                  <input
+                    type="text"
+                    value={trip.tripNumber}
+                    onChange={(e) => set('tripNumber', e.target.value)}
+                    placeholder="مثال: TR-123"
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>نقطة التجمع / نقطة الانطلاق</label>
+                  <input
+                    type="text"
+                    value={trip.gatheringPoint}
+                    onChange={(e) => set('gatheringPoint', e.target.value)}
+                    placeholder="مثال: محطة رمسيس أمام المدخل الرئيسي"
+                    className={inputClass}
+                  />
+                </div>
               </div>
 
               <div>
@@ -230,37 +243,49 @@ export default function TripsView({
             </div>
           </section>
 
-          {/* Accommodation hotel */}
+          {/* Accommodation hotel + price */}
           <section>
             <div className="mb-4 flex items-center gap-2.5">
               <Hotel className="h-5 w-5 text-teal-600" />
               <h4 className="text-sm font-extrabold text-gray-800">
-                الإقامة (فندق الرحلة)
+                الإقامة والتسعير
               </h4>
               <span className="h-px flex-1 bg-gradient-to-l from-teal-200 to-transparent" />
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <label className={labelClass}>فندق الإقامة</label>
+              <div>
+                <label className={labelClass}>اسم الفندق (نص حر)</label>
                 <div className="relative">
                   <Hotel className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <select
-                    value={trip.assignedHotelId || ''}
-                    onChange={(e) => set('assignedHotelId', e.target.value)}
-                    className={`${inputClass} appearance-none pr-10`}
-                  >
-                    <option value="">— بدون فندق —</option>
-                    {hotels.map((h) => (
-                      <option key={h.id} value={h.id}>
-                        {h.name} · {h.location || 'بدون عنوان'}
-                      </option>
-                    ))}
-                  </select>
+                  <input
+                    type="text"
+                    value={trip.hotelName}
+                    onChange={(e) => set('hotelName', e.target.value)}
+                    placeholder="مثال: فندق أبراج الراحة — مكة"
+                    className={`${inputClass} pr-10`}
+                  />
                 </div>
                 <p className="mt-1.5 text-xs font-medium text-gray-400">
-                  ستظهر غرف هذا الفندق فقط في خطوة «تسكين الغرف» بنقطة البيع
-                  الموحدة
+                  اسم الفندق يُكتب يدوياً ولا يرتبط بقسم إدارة الفنادق
+                </p>
+              </div>
+
+              <div>
+                <label className={labelClass}>سعر الرحلة للفرد</label>
+                <div className="relative">
+                  <Wallet className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="number"
+                    min="0"
+                    value={trip.price}
+                    onChange={(e) => set('price', e.target.value)}
+                    placeholder="0"
+                    className={`${inputClass} pr-10`}
+                  />
+                </div>
+                <p className="mt-1.5 text-xs font-medium text-gray-400">
+                  يُستخدم هذا السعر تلقائياً عند إصدار الفواتير من نقطة البيع
                 </p>
               </div>
             </div>
@@ -359,8 +384,9 @@ export default function TripsView({
           <table className="w-full min-w-[820px] text-right text-sm">
             <thead>
               <tr className="bg-gray-50/80 text-xs font-bold uppercase tracking-wide text-gray-500">
-                <th className="px-6 py-3.5 text-right">اسم الرحلة</th>
+                <th className="px-6 py-3.5 text-right">رقم الرحلة \ الحافلة</th>
                 <th className="px-6 py-3.5 text-right">الوجهة</th>
+                <th className="px-6 py-3.5 text-right">نقطة التجمع</th>
                 <th className="px-6 py-3.5 text-right">تاريخ الذهاب</th>
                 <th className="px-6 py-3.5 text-right">الطاقة الاستيعابية</th>
                 <th className="px-6 py-3.5 text-right">الحالة</th>
@@ -414,14 +440,19 @@ function FragmentRow({
     <>
       <tr className="border-t border-gray-100 transition-colors hover:bg-emerald-50/40">
         <td className="px-6 py-4">
-          <p className="font-bold text-gray-800">{t.name}</p>
-          <p className="text-xs font-medium text-gray-400">رحلة رقم {t.id}</p>
+          <p className="font-bold text-gray-800" dir="ltr">{t.tripNumber}</p>
+          <p className="text-xs font-medium text-gray-400">
+            {t.hotelName || 'بدون فندق'}
+          </p>
         </td>
         <td className="px-6 py-4">
           <span className="inline-flex items-center gap-1.5 font-semibold text-gray-600">
             <MapPin className="h-4 w-4 text-amber-600" />
             {t.destination}
           </span>
+        </td>
+        <td className="max-w-[180px] truncate px-6 py-4 text-xs font-semibold text-gray-600" title={t.gatheringPoint}>
+          {t.gatheringPoint || '—'}
         </td>
         <td className="px-6 py-4 font-semibold text-gray-600" dir="ltr">
           {formatDate(t.departure)}
@@ -472,7 +503,7 @@ function FragmentRow({
               onClick={() => {
                 if (
                   window.confirm(
-                    `هل تريد حذف الرحلة «${t.name}» نهائياً من النظام؟`
+                    `هل تريد حذف الرحلة رقم «${t.tripNumber}» نهائياً من النظام؟`
                   )
                 ) {
                   onDelete();
@@ -491,7 +522,7 @@ function FragmentRow({
 
       {isOpen && (
         <tr className="border-t border-dashed border-emerald-100/80 bg-gradient-to-b from-emerald-50/40 to-amber-50/20">
-          <td colSpan={6} className="px-6 py-5">
+          <td colSpan={7} className="px-6 py-5">
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <div className="rounded-2xl bg-white/80 p-5 ring-1 ring-emerald-100">
                 <h4 className="mb-4 flex items-center gap-2 text-sm font-extrabold text-gray-800">
@@ -610,7 +641,6 @@ function TripDetails({
   invoices,
   packages,
   services,
-  hotels,
   onBack,
 }) {
   const [printNode, setPrintNode] = useState(null);
@@ -645,8 +675,7 @@ function TripDetails({
   const booked = trip.bookedCount ?? 0;
   const capPct = capacity > 0 ? Math.min(Math.round((booked / capacity) * 100), 100) : 0;
   const tripStatus = calculateTripStatus(trip, booked);
-  const tripHotel =
-    hotels.find((h) => h.id === Number(trip.assignedHotelId)) || null;
+  const tripHotelName = trip.hotelName || '';
 
   return (
     <div className="space-y-6">
@@ -658,22 +687,27 @@ function TripDetails({
           </div>
           <div>
             <h2 className="text-xl font-extrabold text-gray-900 sm:text-2xl">
-              {trip.name}
+              رحلة {trip.tripNumber}
             </h2>
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              <span
-                className={`inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-bold text-indigo-700 ring-1 ring-indigo-200`}
-              >
-                رحلة رقم {trip.id}
-              </span>
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-700 ring-1 ring-amber-200">
                 <MapPin className="h-3 w-3" />
                 {trip.destination}
               </span>
-              {tripHotel && (
+              {trip.gatheringPoint && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-sky-700 ring-1 ring-sky-200">
+                  <MapPin className="h-3 w-3" />
+                  {trip.gatheringPoint}
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
+                <Wallet className="h-3 w-3" />
+                {formatSAR(trip.price)}
+              </span>
+              {tripHotelName && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-bold text-teal-700 ring-1 ring-teal-200">
                   <Hotel className="h-3 w-3" />
-                  {tripHotel.name}
+                  {tripHotelName}
                 </span>
               )}
               <span
@@ -761,6 +795,12 @@ function TripDetails({
             label="وقت الانطلاق"
             value={trip.time || '10:00'}
             valueDir="ltr"
+          />
+          <InfoCard
+            icon={MapPin}
+            iconBg="bg-sky-50 text-sky-600"
+            label="نقطة التجمع / الانطلاق"
+            value={trip.gatheringPoint || '—'}
           />
 
           {/* Fleet card — spans full width */}

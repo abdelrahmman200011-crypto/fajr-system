@@ -4,10 +4,8 @@ import {
   Wallet,
   Sparkles,
   ArrowLeftRight,
-  Package,
   Building2,
   MapPin,
-  TrendingUp,
 } from 'lucide-react';
 import { formatSAR } from '../data/mockData';
 
@@ -50,7 +48,7 @@ export default function DashboardView({ stats, invoices, trips, onNavigate }) {
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-emerald-50/90 sm:text-base">
               راقب سجل المعتمرين، تابع الرحلات النشطة، وأصدر الفواتير
-              واربطها بالباقات والخدمات بسلاسة
+              وسجّل المدفوعات بسلاسة
             </p>
           </div>
           <button
@@ -123,8 +121,8 @@ export default function DashboardView({ stats, invoices, trips, onNavigate }) {
                         {inv.passenger?.fullName || 'معتمر غير معروف'}
                       </p>
                       <p className="text-xs font-medium text-gray-400">
-                        {inv.package?.name || 'بدون باقة'} ·{' '}
-                        {inv.trip?.name || 'بدون رحلة'}
+                        {inv.trip?.tripNumber || 'بدون رحلة'} ·{' '}
+                        {inv.coveredCount || inv.paxCount || 1} معتمر
                       </p>
                     </div>
                   </div>
@@ -146,7 +144,7 @@ export default function DashboardView({ stats, invoices, trips, onNavigate }) {
         <div className="rounded-2xl border border-white/70 bg-white/70 p-6 shadow-soft backdrop-blur-xl">
           <h3 className="mb-4 flex items-center gap-2 text-base font-extrabold text-gray-900">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
-              <Package className="h-5 w-5" />
+              <Building2 className="h-5 w-5" />
             </span>
             لمحة سريعة
           </h3>
@@ -167,15 +165,6 @@ export default function DashboardView({ stats, invoices, trips, onNavigate }) {
               </span>
               <span className="text-sm font-extrabold text-teal-900">
                 {stats.jazan} راكب
-              </span>
-            </div>
-            <div className="flex items-center justify-between rounded-xl bg-amber-50/80 px-4 py-3">
-              <span className="flex items-center gap-2 text-sm font-bold text-amber-800">
-                <TrendingUp className="h-4 w-4 text-amber-600" />
-                باقات معروضة
-              </span>
-              <span className="text-sm font-extrabold text-amber-900">
-                {stats.packageCount} باقة
               </span>
             </div>
           </div>

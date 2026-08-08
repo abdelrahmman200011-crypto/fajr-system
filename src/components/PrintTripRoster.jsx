@@ -198,7 +198,7 @@ export default function PrintTripRoster({ trip, passengers }) {
                   className="my-3 text-center text-lg font-extrabold leading-tight"
                   style={{ color: BRAND_GREEN }}
                 >
-                  الكشف الرسمي لركاب رحلة: {trip.name}
+                  الكشف الرسمي لركاب الرحلة رقم: {trip.tripNumber}
                   {trip.destination ? ` — ${trip.destination}` : ''}
                 </p>
                 <TripDetails trip={trip} capacity={capacity} />

@@ -30,7 +30,7 @@ export function PrintHeader({ compact = false, logoClass }) {
         </div>
 
         <img
-          src="/logo.png"
+          src={import.meta.env.BASE_URL + 'logo.png'}
           alt="Logo"
           className={`mx-auto w-auto object-contain ${logo}`}
           style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}

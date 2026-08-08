@@ -24,7 +24,6 @@ import {
 } from 'lucide-react';
 import {
   formatSAR,
-  packagePrice,
   familyMembers,
   familyHead,
   invoiceTotals,
@@ -233,9 +232,9 @@ export default function InvoiceDetailsView({
             </h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <p className="text-xs font-bold text-gray-400">اسم الرحلة</p>
+                <p className="text-xs font-bold text-gray-400">رقم الرحلة</p>
                 <p className="mt-1 font-extrabold text-gray-900">
-                  {trip?.name || '—'}
+                  {trip?.tripNumber || '—'}
                 </p>
               </div>
               <div>
@@ -245,6 +244,15 @@ export default function InvoiceDetailsView({
                 </p>
                 <p className="mt-1 font-bold text-gray-800">
                   {trip?.destination || '—'}
+                </p>
+              </div>
+              <div>
+                <p className="flex items-center gap-1 text-xs font-bold text-gray-400">
+                  <MapPin className="h-3 w-3" />
+                  نقطة التجمع / الانطلاق
+                </p>
+                <p className="mt-1 font-bold text-gray-800">
+                  {trip?.gatheringPoint || '—'}
                 </p>
               </div>
               <div>

@@ -137,14 +137,14 @@ export default function HotelsView({
   const totalRoomsAll = rooms.length;
   const totalBedsAll = rooms.reduce((a, r) => a + r.capacity, 0);
 
-  const addHotel = (e) => {
+  const addHotel = async (e) => {
     e.preventDefault();
     const name = newHotel.name.trim();
     if (!name) {
       setHotelError('يرجى إدخال اسم الفندق');
       return;
     }
-    const created = onAddHotel({ ...newHotel, name });
+    const created = await onAddHotel({ ...newHotel, name });
     setNewHotel({ name: '', location: '' });
     setHotelError('');
     setSelectedHotelId(created?.id ?? null);

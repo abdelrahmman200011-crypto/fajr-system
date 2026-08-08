@@ -169,7 +169,7 @@ export default function PassengerDetailsView({
                         فاتورة #{inv.id}
                       </p>
                       <p className="truncate text-xs font-medium text-gray-500">
-                        {trip?.name || '—'}
+                        {trip?.tripNumber || '—'}
                       </p>
                     </div>
                     <div className="shrink-0 text-left">

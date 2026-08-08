@@ -103,7 +103,7 @@ export default function PrintInvoice({ invoice }) {
                 </div>
 
                 <img
-                  src="/logo.png"
+                  src={import.meta.env.BASE_URL + 'logo.png'}
                   alt="Logo"
                   className="mx-auto h-20 w-auto object-contain"
                   style={{
@@ -191,7 +191,7 @@ export default function PrintInvoice({ invoice }) {
                 <div className={infoCell}>
                   <p className="text-xs font-bold" style={{ color: BRAND_BROWN }}>الرحلة</p>
                   <p className="mt-0.5 text-sm font-extrabold text-black">
-                    {trip?.name || '—'} {trip?.destination ? `· ${trip.destination}` : ''}
+                    {trip?.tripNumber || '—'} {trip?.destination ? `· ${trip.destination}` : ''}
                   </p>
                 </div>
                 <div className={infoCell}>
@@ -203,7 +203,7 @@ export default function PrintInvoice({ invoice }) {
                 <div className={infoCell}>
                   <p className="text-xs font-bold" style={{ color: BRAND_BROWN }}>الباقة</p>
                   <p className="mt-0.5 text-sm font-extrabold text-black">
-                    {pkg?.name || '—'}
+                    {pkg?.name || formatSAR(invoice.perPerson)}
                   </p>
                 </div>
               </div>

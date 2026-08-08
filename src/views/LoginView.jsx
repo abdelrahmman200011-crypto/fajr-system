@@ -56,7 +56,7 @@ export default function LoginView({ onLogin }) {
           <div className="mb-8 flex flex-col items-center text-center">
             <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl bg-white shadow-xl shadow-emerald-900/15 ring-1 ring-emerald-100">
               <img
-                src="/logo.png"
+                src={import.meta.env.BASE_URL + 'logo.png'}
                 alt="فجر النسك"
                 className="h-16 w-16 object-contain"
               />

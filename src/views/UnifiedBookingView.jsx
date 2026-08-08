@@ -6,7 +6,6 @@ import {
   UserPlus,
   Users,
   Bus,
-  Package,
   Calculator,
   Wallet,
   CreditCard,
@@ -20,21 +19,12 @@ import {
   Minus,
   User,
   BadgeCheck,
-  BedDouble,
-  DoorOpen,
-  Hotel,
-  UsersRound,
-  Lock,
-  Venus,
-  Mars,
-  KeyRound,
   ArrowLeft,
   ArrowRight,
   Building2,
 } from 'lucide-react';
 import {
   formatSAR,
-  packagePrice,
   familyMembers,
   familyHead,
 } from '../data/mockData';
@@ -72,14 +62,14 @@ const nationalities = [
   'أخرى',
 ];
 
-const remainingSeats = (trip) => Math.max(trip.capacity - trip.bookedCount, 0);
+const remainingSeats = (trip) =>
+  Math.max(trip.capacity - (trip.bookedCount || 0), 0);
 const seatsLabel = (count) => (count === 1 ? 'مقعد' : 'مقاعد');
 
 const STEPS = [
   { id: 1, title: 'تحديد العميل', icon: UserSearch },
-  { id: 2, title: 'الرحلة والباقة', icon: Bus },
-  { id: 3, title: 'تسكين الغرف', icon: DoorOpen },
-  { id: 4, title: 'الدفع والتأكيد', icon: Wallet },
+  { id: 2, title: 'الرحلة والسعر', icon: Bus },
+  { id: 3, title: 'الدفع والتأكيد', icon: Wallet },
 ];
 
 function StepBadge({ step, icon: Icon, color, title, subtitle }) {
@@ -102,14 +92,9 @@ function StepBadge({ step, icon: Icon, color, title, subtitle }) {
 export default function UnifiedBookingView({
   passengers,
   trips,
-  packages,
-  services,
-  hotels,
-  rooms,
   currentUserBranch,
   onAddPassengers,
   onAddInvoice,
-  onAssignRooms,
   onViewInvoice,
 }) {  const [mode, setMode] = useState('existing');
   const [passengerId, setPassengerId] = useState('');
@@ -117,8 +102,6 @@ export default function UnifiedBookingView({
   const [newCompanions, setNewCompanions] = useState([]);
   const [companionCount, setCompanionCount] = useState(0);
   const [tripId, setTripId] = useState('');
-  const [packageId, setPackageId] = useState('');
-  const [roomId, setRoomId] = useState('');
   const [checkedIds, setCheckedIds] = useState(() => new Set());
   const [paid, setPaid] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
@@ -215,61 +198,14 @@ export default function UnifiedBookingView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memberKeys]);
 
-  /* Reset the chosen room whenever the trip or the covered members change */
-  useEffect(() => {
-    setRoomId('');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tripId, memberKeys]);
-
-  const selectedTrip = trips.find((t) => t.id === Number(tripId)) || null;
-  const selectedPackage =
-    packages.find((p) => p.id === Number(packageId)) || null;
-  const perPerson = selectedPackage ? packagePrice(selectedPackage, services) : 0;
+  const selectedTrip = trips.find((t) => t.id === tripId) || null;
+  const perPerson = Number(selectedTrip?.price) || 0;
   const coveredList = familyList.filter((m) => checkedIds.has(m.key));
   const checkedCount = coveredList.length;
   const total = checkedCount * perPerson;
   const paidValue = Number(paid) || 0;
   const remaining = Math.max(total - paidValue, 0);
   const methodRequired = paidValue > 0;
-
-  /* -------- Room allocation (rooms filtered by the trip's assigned hotel) -------- */
-  const assignedHotel =
-    selectedTrip && selectedTrip.assignedHotelId
-      ? hotels.find((h) => h.id === Number(selectedTrip.assignedHotelId)) || null
-      : null;
-  const tripRooms =
-    selectedTrip && selectedTrip.assignedHotelId
-      ? rooms.filter((r) => r.hotelId === Number(selectedTrip.assignedHotelId))
-      : [];
-  const occupiedCount = (roomIdVal) =>
-    passengers.filter((p) => p.roomId === roomIdVal).length;
-  const isGenderAllowed = (gender, roomType) => {
-    if (!gender) return false;
-    if (roomType === 'عائلي') return true;
-    return roomType === 'رجال' ? gender === 'male' : gender === 'female';
-  };
-  const bookingFamilyId = coveredList[0]?.id
-    ? passengers.find((p) => p.id === coveredList[0].id)?.familyId || null
-    : null;
-  const suitableRooms = tripRooms.filter((room) => {
-    const occupied = occupiedCount(room.id);
-    if (occupied + checkedCount > room.capacity) return false;
-    if (!coveredList.every((m) => isGenderAllowed(m.gender, room.type)))
-      return false;
-    if (room.type === 'عائلي' && occupied > 0 && bookingFamilyId) {
-      const first = passengers.find((p) => p.roomId === room.id);
-      if (first && first.familyId && first.familyId !== bookingFamilyId)
-        return false;
-    }
-    return true;
-  });
-  const selectedRoom = tripRooms.find((r) => r.id === Number(roomId)) || null;
-  const tripTotalBeds = tripRooms.reduce((a, r) => a + r.capacity, 0);
-  const tripOccupiedBeds = tripRooms.reduce(
-    (a, r) => a + occupiedCount(r.id),
-    0
-  );
-  const tripFreeBeds = Math.max(tripTotalBeds - tripOccupiedBeds, 0);
 
   const inputClass = 'input-field focus:border-emerald-500 focus:ring-emerald-500/20';
   const labelClass = 'mb-1.5 block text-sm font-semibold text-gray-700';
@@ -320,7 +256,6 @@ export default function UnifiedBookingView({
 
   const canIssue = Boolean(
     tripId &&
-      packageId &&
       checkedCount > 0 &&
       paidValue >= 0 &&
       paidValue <= total &&
@@ -380,10 +315,6 @@ export default function UnifiedBookingView({
       setError('يرجى اختيار الرحلة');
       return;
     }
-    if (!packageId) {
-      setError('يرجى اختيار الباقة');
-      return;
-    }
     if (checkedCount === 0) {
       setError('يرجى تحديد فرد واحد على الأقل مشمول بهذه الفاتورة');
       return;
@@ -407,7 +338,6 @@ export default function UnifiedBookingView({
 
     let primaryPassenger;
     let coveredPassengers;
-    const assignedRoomId = roomId ? Number(roomId) : null;
 
     if (mode === 'new') {
       const namedComps = newCompanions.filter((c) => c.fullName.trim());
@@ -415,14 +345,13 @@ export default function UnifiedBookingView({
       const { phone, address } = newMain;
       const branch = currentUserBranch || 'الداير';
       const people = [
-        { ...newMain, branch, familyId, roomId: assignedRoomId },
+        { ...newMain, branch, familyId },
         ...namedComps.map((c) => ({
           ...c,
           phone: c.phone.trim() || phone,
           address: c.address.trim() || address,
           branch,
           familyId,
-          roomId: assignedRoomId,
         })),
       ];
       const created = await onAddPassengers(people);
@@ -436,19 +365,12 @@ export default function UnifiedBookingView({
       coveredPassengers = familyList
         .filter((m) => checkedIds.has(m.key))
         .map((m) => ({ id: m.id, fullName: m.fullName, isPrimary: m.isPrimary }));
-      if (assignedRoomId) {
-        onAssignRooms(
-          coveredPassengers.map((p) => p.id),
-          assignedRoomId
-        );
-      }
     }
 
     const coveredCount = coveredPassengers.length;
     const invoice = onAddInvoice({
       passengerId: primaryPassenger.id,
-      tripId: Number(tripId),
-      packageId: Number(packageId),
+      tripId,
       paid: paidValue,
       paidAmount: paidValue,
       paymentMethod: methodRequired ? paymentMethod : '',
@@ -462,8 +384,6 @@ export default function UnifiedBookingView({
       ...invoice,
       passenger: primaryPassenger,
       trip: selectedTrip,
-      pkg: selectedPackage,
-      room: selectedRoom,
       total: invoiceTotal,
       paid: paidValue,
     });
@@ -475,14 +395,11 @@ export default function UnifiedBookingView({
       total: invoiceTotal,
       paid: paidValue,
       remaining: Math.max(invoiceTotal - paidValue, 0),
-      tripName: selectedTrip?.name,
-      roomName: selectedRoom ? selectedRoom.number : null,
+      tripName: selectedTrip?.tripNumber,
     });
 
     setPassengerId('');
     setTripId('');
-    setPackageId('');
-    setRoomId('');
     setPaid('');
     setPaymentMethod('');
     setCheckedIds(new Set());
@@ -499,8 +416,6 @@ export default function UnifiedBookingView({
     setInvoiceToPrint(null);
     setPassengerId('');
     setTripId('');
-    setPackageId('');
-    setRoomId('');
     setPaid('');
     setPaymentMethod('');
     setCheckedIds(new Set());
@@ -523,7 +438,6 @@ export default function UnifiedBookingView({
         );
   const step2Ready = Boolean(
     tripId &&
-      packageId &&
       checkedCount > 0 &&
       selectedTrip &&
       remainingSeats(selectedTrip) >= checkedCount
@@ -535,8 +449,8 @@ export default function UnifiedBookingView({
     currentStep === 1
       ? 'أكمل بيانات العميل (أو اختر معتمراً مسجلاً) للمتابعة'
       : currentStep === 2
-        ? 'اختر الرحلة والباقة وحدّد فرداً واحداً مشمولاً على الأقل'
-        : 'هذه الخطوة اختيارية — يمكنك المتابعة بدون تسكين غرفة';
+        ? 'اختر الرحلة وحدّد فرداً واحداً مشمولاً على الأقل'
+        : 'راجع الإجمالي وطريقة الدفع ثم أكّد الحجز';
 
   const goNext = () => {
     setError('');
@@ -546,7 +460,7 @@ export default function UnifiedBookingView({
       return;
     }
     if (currentStep === 2 && !step2Ready) {
-      setError('اختر الرحلة والباقة وحدّد الأفراد المشمولين قبل المتابعة');
+      setError('اختر الرحلة وحدّد الأفراد المشمولين قبل المتابعة');
       return;
     }
     setCurrentStep((s) => Math.min(STEPS.length, s + 1));
@@ -571,7 +485,7 @@ export default function UnifiedBookingView({
                 نقطة البيع الموحدة
               </h1>
               <p className="mt-1 text-sm font-medium text-white/80">
-                سجّل المعتمر، اختر الرحلة والباقة، حدّد أفراد العائلة، استلم
+                سجّل المعتمر، اختر الرحلة، حدّد أفراد العائلة، استلم
                 الدفعة، واطبع الفاتورة — في شاشة واحدة دون التنقل بين الأقسام
               </p>
             </div>
@@ -597,11 +511,6 @@ export default function UnifiedBookingView({
                   {seatsLabel(success.count)} · {success.tripName} · الإجمالي{' '}
                   {formatSAR(success.total)} · المدفوع {formatSAR(success.paid)} ·
                   المتبقي {formatSAR(success.remaining)}
-                  {success.roomName && (
-                    <>
-                      {' '}· غرفة {success.roomName}
-                    </>
-                  )}
                 </p>
               </div>
             </div>
@@ -1058,8 +967,8 @@ export default function UnifiedBookingView({
               step={2}
               icon={Bus}
               color="sky"
-              title="الرحلة والباقة وأفراد الحجز"
-              subtitle="حدد الوجهة والباقة، ثم علّم على من تشملهم هذه الفاتورة"
+              title="الرحلة والسعر وأفراد الحجز"
+              subtitle="حدد الرحلة، ثم علّم على من تشملهم هذه الفاتورة"
             />
           </div>
 
@@ -1082,7 +991,7 @@ export default function UnifiedBookingView({
                     const isFull = free <= 0;
                     return (
                       <option key={t.id} value={t.id} disabled={isFull}>
-                        {t.name} · {t.destination} (
+                        [{t.tripNumber}] {t.destination} · {formatSAR(t.price)} (
                         {isFull
                           ? 'مكتملة العدد'
                           : `متبقي ${free} ${seatsLabel(free)}`}
@@ -1101,25 +1010,15 @@ export default function UnifiedBookingView({
               )}
             </div>
             <div>
-              <label className={labelClass}>الباقة</label>
-              <div className="relative">
-                <Package className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <select
-                  value={packageId}
-                  onChange={(e) => {
-                    setSuccess(null);
-                    setPackageId(e.target.value);
-                  }}
-                  className={`${inputClass} appearance-none pr-10`}
-                >
-                  <option value="">— اختر الباقة —</option>
-                  {packages.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({formatSAR(packagePrice(p, services))})
-                    </option>
-                  ))}
-                </select>
+              <label className={labelClass}>سعر الرحلة للفرد</label>
+              <div className="flex h-11 items-center justify-between rounded-xl border border-emerald-200/70 bg-emerald-50/70 px-4 text-sm font-extrabold text-emerald-900">
+                <span>{formatSAR(perPerson)}</span>
+                <Wallet className="h-4 w-4 text-emerald-600" />
               </div>
+              <p className="mt-2 text-xs font-medium text-gray-400">
+                مأخوذ مباشرة من سعر الرحلة المحددة، ويُضرب تلقائياً في عدد
+                الأفراد المشمولين
+              </p>
             </div>
           </div>
 
@@ -1180,238 +1079,6 @@ export default function UnifiedBookingView({
           <div className="mb-5">
             <StepBadge
               step={3}
-              icon={DoorOpen}
-              color="teal"
-              title="تسكين الغرف"
-              subtitle="خصّص الغرفة المناسبة لأفراد هذا الحجز (اختياري)"
-            />
-          </div>
-
-          {!selectedTrip ? (
-            <p className="rounded-xl bg-gray-50 px-4 py-4 text-center text-sm font-medium text-gray-400">
-              اختر الرحلة أولاً في الخطوة السابقة لعرض الغرف المتاحة
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {assignedHotel ? (
-                <div className="flex items-center gap-3 rounded-2xl border border-teal-200 bg-gradient-to-l from-teal-50 to-emerald-50 p-4">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-600 to-emerald-700 text-white shadow-md shadow-teal-700/20">
-                    <Hotel className="h-5 w-5" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-extrabold text-teal-900">
-                      تسكين فندق: {assignedHotel.name}
-                    </p>
-                    <p className="mt-0.5 truncate text-xs font-semibold text-teal-700">
-                      {assignedHotel.location || 'بدون عنوان'} ·{' '}
-                      {tripRooms.length} غرفة متاحة لهذه الرحلة
-                    </p>
-                  </div>
-                  <span className="mr-auto shrink-0 rounded-full bg-teal-600/10 px-3 py-1 text-[11px] font-extrabold text-teal-700 ring-1 ring-teal-200">
-                    فندق معتمد
-                  </span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                  <CircleAlert className="h-5 w-5 shrink-0 text-amber-600" />
-                  <div>
-                    <p className="text-sm font-extrabold text-amber-800">
-                      لم يُحدد فندق إقامة لهذه الرحلة
-                    </p>
-                    <p className="mt-0.5 text-xs font-semibold text-amber-700">
-                      يمكنك إكمال الحجز بدون تخصيص غرفة، أو اربط فندقاً
-                      بالرحلة من قسم «الرحلات»
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                {[
-                  { label: 'غرف الرحلة', value: tripRooms.length, icon: DoorOpen, tint: 'bg-emerald-500/10', color: 'text-emerald-600' },
-                  { label: 'إجمالي الأسرة', value: tripTotalBeds, icon: BedDouble, tint: 'bg-amber-500/10', color: 'text-amber-600' },
-                  { label: 'أسرة مشغولة', value: tripOccupiedBeds, icon: UsersRound, tint: 'bg-teal-500/10', color: 'text-teal-600' },
-                  { label: 'أسرة متاحة', value: tripFreeBeds, icon: Hotel, tint: 'bg-sky-500/10', color: 'text-sky-600' },
-                ].map((s) => (
-                  <div
-                    key={s.label}
-                    className="flex items-center gap-2.5 rounded-2xl border border-white/70 bg-white/60 p-3.5 shadow-sm"
-                  >
-                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${s.tint}`}>
-                      <s.icon className={`h-5 w-5 ${s.color}`} />
-                    </div>
-                    <div className="leading-tight">
-                      <p className="text-[11px] font-bold text-gray-500">{s.label}</p>
-                      <p className="text-lg font-extrabold text-gray-900">{s.value}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {tripRooms.length === 0 ? (
-                <p className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
-                  <CircleAlert className="h-4 w-4 shrink-0" />
-                  لا توجد غرف مسجلة لفندق هذه الرحلة بعد — يمكنك إكمال الحجز
-                  بدون تخصيص غرفة، أو أضف الغرف من قسم «الفنادق والغرف».
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  <div>
-                    <label className={labelClass}>
-                      تخصيص غرفة لأفراد الحجز ({checkedCount})
-                    </label>
-                    <div className="relative">
-                      <BedDouble className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                      <select
-                        value={roomId}
-                        onChange={(e) => {
-                          setSuccess(null);
-                          setRoomId(e.target.value);
-                        }}
-                        disabled={checkedCount === 0}
-                        className={`${inputClass} appearance-none pr-10 disabled:cursor-not-allowed disabled:bg-gray-50`}
-                      >
-                        <option value="">— بدون تخصيص غرفة —</option>
-                        {suitableRooms.map((r) => (
-                          <option key={r.id} value={r.id}>
-                            غرفة {r.number} · {r.type} (
-                            {r.capacity - occupiedCount(r.id)} متاح)
-                          </option>
-                        ))}
-                        {suitableRooms.length === 0 && checkedCount > 0 && (
-                          <option value="" disabled>
-                            لا توجد غرفة مناسبة لعدد {checkedCount} من هذا الجنس
-                          </option>
-                        )}
-                      </select>
-                    </div>
-                    {checkedCount === 0 && (
-                      <p className="mt-1.5 text-xs font-medium text-gray-400">
-                        حدّد الأفراد المشمولين في الخطوة السابقة أولاً
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {tripRooms.map((r) => {
-                      const occ = occupiedCount(r.id);
-                      const isFull = occ >= r.capacity;
-                      const chosen = Number(roomId) === r.id;
-                      const suitable = suitableRooms.includes(r);
-                      const pct = Math.min((occ / r.capacity) * 100, 100);
-                      return (
-                        <button
-                          key={r.id}
-                          type="button"
-                          disabled={checkedCount === 0}
-                          onClick={() => {
-                            setSuccess(null);
-                            setRoomId(chosen ? '' : String(r.id));
-                          }}
-                          className={`relative w-full rounded-2xl border p-3.5 text-right transition sm:w-[calc(50%-0.5rem)] ${
-                            chosen
-                              ? 'border-teal-500 bg-teal-50 ring-2 ring-teal-200'
-                              : suitable
-                                ? 'border-gray-200 bg-white hover:border-teal-300 hover:bg-teal-50/40'
-                                : 'cursor-not-allowed border-gray-100 bg-gray-50 opacity-50'
-                          } disabled:cursor-not-allowed`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-emerald-700 text-white">
-                                <BedDouble className="h-4 w-4" />
-                              </span>
-                              <div className="leading-tight">
-                                <p className="text-sm font-extrabold text-gray-900">
-                                  غرفة {r.number}
-                                </p>
-                                <span
-                                  className={`inline-flex items-center gap-1 rounded-full px-2 py-px text-[10px] font-extrabold ring-1 ${
-                                    r.type === 'رجال'
-                                      ? 'bg-sky-50 text-sky-700 ring-sky-200'
-                                      : r.type === 'نساء'
-                                        ? 'bg-rose-50 text-rose-700 ring-rose-200'
-                                        : 'bg-amber-50 text-amber-700 ring-amber-200'
-                                  }`}
-                                >
-                                  {r.type === 'رجال' ? (
-                                    <Mars className="h-3 w-3" />
-                                  ) : r.type === 'نساء' ? (
-                                    <Venus className="h-3 w-3" />
-                                  ) : (
-                                    <UsersRound className="h-3 w-3" />
-                                  )}
-                                  {r.type === 'رجال'
-                                    ? 'رجال'
-                                    : r.type === 'نساء'
-                                      ? 'نساء'
-                                      : 'عائلي'}
-                                </span>
-                              </div>
-                            </div>
-                            {isFull ? (
-                              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-extrabold text-amber-700">
-                                ممتلئة
-                              </span>
-                            ) : (
-                              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700">
-                                {r.capacity - occ} متاح
-                              </span>
-                            )}
-                          </div>
-                          <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-gray-100">
-                            <div
-                              className={`h-full rounded-full ${
-                                isFull ? 'bg-amber-500' : 'bg-emerald-500'
-                              }`}
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                          <p className="mt-1.5 text-[11px] font-semibold text-gray-500">
-                            {occ} / {r.capacity} أسرة مشغولة
-                            {r.type === 'عائلي' && occ > 0 && (
-                              <span className="mr-1.5 inline-flex items-center gap-1 text-violet-600">
-                                <Lock className="h-3 w-3" /> مقفلة على عائلة
-                              </span>
-                            )}
-                          </p>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {selectedRoom && (
-                <div className="flex items-center gap-3 rounded-2xl border border-teal-200 bg-teal-50/60 p-4">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-600 text-white">
-                    <KeyRound className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-extrabold text-teal-900">
-                      سيتم تسكين {checkedCount} {seatsLabel(checkedCount)} في
-                      غرفة {selectedRoom.number} · {selectedRoom.type}
-                    </p>
-                    <p className="text-xs font-semibold text-teal-700">
-                      السعة {selectedRoom.capacity} · شاغرة{' '}
-                      {Math.max(
-                        selectedRoom.capacity - occupiedCount(selectedRoom.id),
-                        0
-                      )}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          </section>
-        )}
-
-        {currentStep === 4 && (
-        <section className={cardClass}>
-          <div className="mb-5">
-            <StepBadge
-              step={4}
               icon={Wallet}
               color="amber"
               title="المالية والدفع"
@@ -1479,7 +1146,7 @@ export default function UnifiedBookingView({
             </div>
           </div>
 
-          {packageId && paidValue > total && (
+          {paidValue > total && (
             <p className="mt-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600">
               <CircleAlert className="h-4 w-4" />
               المدفوع أكبر من إجمالي الفاتورة، راجع القيمة

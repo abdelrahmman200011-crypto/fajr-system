@@ -7,31 +7,20 @@ import {
   updateDoc,
   deleteDoc,
   doc,
+  increment,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import Sidebar, { NAV_TABS } from './components/Sidebar';
 import TopNavbar from './components/TopNavbar';
 import LoginView from './views/LoginView';
 import DashboardView from './views/DashboardView';
-import ServicesPackagesView from './views/ServicesPackagesView';
 import TripsView from './views/TripsView';
 import PassengersView from './views/PassengersView';
 import InvoicesView from './views/InvoicesView';
 import UnifiedBookingView from './views/UnifiedBookingView';
-import HotelsView from './views/HotelsView';
 import InvoiceDetailsView from './views/InvoiceDetailsView';
 import PassengerDetailsView from './views/PassengerDetailsView';
-import {
-  initialServices,
-  initialPackages,
-  initialTrips,
-  initialInvoices,
-  initialHotels,
-  initialRooms,
-  packagePrice,
-  invoiceTotals,
-  calculateTripStatus,
-} from './data/mockData';
+import { invoiceTotals, calculateTripStatus } from './data/mockData';
 
 const nextId = (list) =>
   list.length > 0 ? Math.max(...list.map((x) => x.id)) + 1 : 1;
@@ -45,12 +34,12 @@ export default function App() {
 
   const [passengers, setPassengers] = useState([]);
   const [passengersLoading, setPassengersLoading] = useState(true);
-  const [services, setServices] = useState(initialServices);
-  const [packages, setPackages] = useState(initialPackages);
-  const [trips, setTrips] = useState(initialTrips);
-  const [invoices, setInvoices] = useState(initialInvoices);
-  const [hotels, setHotels] = useState(initialHotels);
-  const [rooms, setRooms] = useState(initialRooms);
+  const [services, setServices] = useState([]);
+  const [packages, setPackages] = useState([]);
+  const [trips, setTrips] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [hotels, setHotels] = useState([]);
+  const [rooms, setRooms] = useState([]);
 
   const stats = useMemo(() => {
     return {
@@ -61,9 +50,8 @@ export default function App() {
       totalRevenue: invoices.reduce((acc, inv) => acc + inv.paid, 0),
       aldaer: passengers.filter((p) => p.branch === 'الداير').length,
       jazan: passengers.filter((p) => p.branch === 'جازان').length,
-      packageCount: packages.length,
     };
-  }, [passengers, trips, invoices, packages.length]);
+  }, [passengers, trips, invoices]);
 
   const enrichedInvoices = useMemo(
     () =>
@@ -117,6 +105,46 @@ export default function App() {
     return unsubscribe;
   }, []);
 
+  /* ---------- Hotels & Rooms real-time sync (Firestore) ---------- */
+  useEffect(() => {
+    const unsubHotels = onSnapshot(
+      collection(db, 'hotels'),
+      (snapshot) => {
+        setHotels(
+          snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+        );
+      },
+      (error) => console.error('فشل مزامنة الفنادق:', error)
+    );
+    const unsubRooms = onSnapshot(
+      collection(db, 'rooms'),
+      (snapshot) => {
+        setRooms(
+          snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+        );
+      },
+      (error) => console.error('فشل مزامنة الغرف:', error)
+    );
+    return () => {
+      unsubHotels();
+      unsubRooms();
+    };
+  }, []);
+
+  /* ---------- Trips real-time sync (Firestore) ---------- */
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, 'trips'),
+      (snapshot) => {
+        setTrips(
+          snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+        );
+      },
+      (error) => console.error('فشل مزامنة الرحلات:', error)
+    );
+    return unsubscribe;
+  }, []);
+
   /* ---------- Passengers CRUD ---------- */
   const addPassengers = async (list) => {
     const created = [];
@@ -143,14 +171,6 @@ export default function App() {
     await deleteDoc(doc(db, 'passengers', id));
   };
 
-  const assignRooms = async (ids, roomId) => {
-    await Promise.all(
-      ids.map((id) =>
-        updateDoc(doc(db, 'passengers', id), { roomId: roomId || null })
-      )
-    );
-  };
-
   /* ---------- Factory Reset (Admin only) ---------- */
   const handleFactoryReset = async () => {
     const collectionsToWipe = ['hotels', 'trips', 'passengers', 'invoices'];
@@ -164,31 +184,19 @@ export default function App() {
     setRooms([]);
   };
 
-  /* ---------- Services & Packages CRUD ---------- */
-  const addService = (data) =>
-    setServices((prev) => [{ ...data, id: nextId(prev) }, ...prev]);
-
-  const deleteService = (id) => {
-    setServices((prev) => prev.filter((s) => s.id !== id));
-    setPackages((prev) =>
-      prev.map((p) => ({
-        ...p,
-        serviceIds: p.serviceIds.filter((sid) => sid !== id),
-      }))
-    );
+  /* ---------- Trips CRUD (Firestore) ---------- */
+  const addTrip = async (data) => {
+    const ref = await addDoc(collection(db, 'trips'), {
+      ...data,
+      price: Number(data.price) || 0,
+      bookedCount: 0,
+    });
+    return { id: ref.id, ...data };
   };
 
-  const addPackage = (data) =>
-    setPackages((prev) => [{ ...data, id: nextId(prev) }, ...prev]);
-
-  const deletePackage = (id) =>
-    setPackages((prev) => prev.filter((p) => p.id !== id));
-
-  /* ---------- Trips CRUD ---------- */
-  const addTrip = (data) =>
-    setTrips((prev) => [{ ...data, id: nextId(prev) }, ...prev]);
-
-  const deleteTrip = (id) => setTrips((prev) => prev.filter((t) => t.id !== id));
+  const deleteTrip = async (id) => {
+    await deleteDoc(doc(db, 'trips', id));
+  };
 
   /* ---------- Invoices ---------- */
   const addInvoice = (data) => {
@@ -204,8 +212,8 @@ export default function App() {
             },
           ]
         : [];
-    const pkg = packages.find((p) => p.id === data.packageId) || null;
-    const perPerson = pkg ? packagePrice(pkg, services) : 0;
+    const trip = trips.find((t) => t.id === data.tripId) || null;
+    const perPerson = Number(trip?.price) || 0;
     const paxCount =
       Number(data.coveredCount) || data.coveredPassengers?.length || 1;
     const totalAmount = perPerson * paxCount;
@@ -222,34 +230,23 @@ export default function App() {
       paymentHistory,
     };
     setInvoices((prev) => [invoice, ...prev]);
-    setTrips((prev) =>
-      prev.map((t) =>
-        t.id === data.tripId
-          ? { ...t, bookedCount: t.bookedCount + paxCount }
-          : t
-      )
-    );
+    if (trip) {
+      updateDoc(doc(db, 'trips', trip.id), {
+        bookedCount: increment(paxCount),
+      }).catch((error) => console.error('فشل تحديث مقاعد الرحلة:', error));
+      setTrips((prev) =>
+        prev.map((t) =>
+          t.id === data.tripId
+            ? { ...t, bookedCount: (t.bookedCount ?? 0) + paxCount }
+            : t
+        )
+      );
+    }
     return invoice;
   };
 
   const deleteInvoice = (id) =>
     setInvoices((prev) => prev.filter((inv) => inv.id !== id));
-
-  const addRoom = (data) =>
-    setRooms((prev) => [{ ...data, id: nextId(prev) }, ...prev]);
-
-  const deleteRoom = (id) => setRooms((prev) => prev.filter((r) => r.id !== id));
-
-  const addHotel = (data) => {
-    const hotel = { ...data, id: nextId(hotels) };
-    setHotels((prev) => [hotel, ...prev]);
-    return hotel;
-  };
-
-  const deleteHotel = (id) => {
-    setHotels((prev) => prev.filter((h) => h.id !== id));
-    setRooms((prev) => prev.filter((r) => r.hotelId !== id));
-  };
 
   const addPayment = (id, amount, method) =>
     setInvoices((prev) =>
@@ -285,18 +282,6 @@ export default function App() {
 
   let view;
   switch (activeView) {
-    case 'packages':
-      view = (
-        <ServicesPackagesView
-          services={services}
-          packages={packages}
-          onAddService={addService}
-          onAddPackage={addPackage}
-          onDeleteService={deleteService}
-          onDeletePackage={deletePackage}
-        />
-      );
-      break;
     case 'trips':
       view = (
         <TripsView
@@ -305,23 +290,9 @@ export default function App() {
           invoices={invoices}
           packages={packages}
           services={services}
-          hotels={hotels}
           currentUser={currentUser}
           onAddTrip={addTrip}
           onDeleteTrip={deleteTrip}
-        />
-      );
-      break;
-    case 'rooms':
-      view = (
-        <HotelsView
-          hotels={hotels}
-          rooms={rooms}
-          passengers={passengers}
-          onAddHotel={addHotel}
-          onDeleteHotel={deleteHotel}
-          onAddRoom={addRoom}
-          onDeleteRoom={deleteRoom}
         />
       );
       break;
@@ -332,12 +303,9 @@ export default function App() {
           trips={trips}
           packages={packages}
           services={services}
-          hotels={hotels}
-          rooms={rooms}
           currentUserBranch={currentUser.branch}
           onAddPassengers={addPassengers}
           onAddInvoice={addInvoice}
-          onAssignRooms={assignRooms}
           onViewInvoice={(id) => {
             setDetailInvoiceId(id);
             window.scrollTo({ top: 0, behavior: 'smooth' });

@@ -1,6 +1,10 @@
 {
+  "firestore": {
+    "rules": "firestore.rules"
+  },
   "hosting": {
-    "public": "public",
+    "site": "fajr-system-f62c3",
+    "public": "dist",
     "ignore": [
       "firebase.json",
       "**/.*",

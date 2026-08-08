@@ -245,9 +245,9 @@ export default function PassengerForm({
             </h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div>
-                <p className="text-xs font-bold text-gray-400">الرحلة</p>
+                <p className="text-xs font-bold text-gray-400">رقم الرحلة</p>
                 <p className="mt-1 font-extrabold text-gray-900">
-                  {trip.name}
+                  {trip.tripNumber}
                 </p>
               </div>
               <div>
@@ -560,9 +560,9 @@ export default function PassengerForm({
         <div className="sticky bottom-4 z-10 flex flex-col-reverse gap-3 rounded-2xl border border-white/70 bg-white/90 p-4 shadow-soft backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
           <div className="text-xs font-medium text-gray-400">
             {!isEdit && count > 1
-              ? `سيتم تسجيل ${count} أفراد (مسؤول + ${count - 1} مرافق) في ${trip?.name || 'الرحلة المحددة'}`
+              ? `سيتم تسجيل ${count} أفراد (مسؤول + ${count - 1} مرافق) في الرحلة رقم ${trip?.tripNumber || 'الرحلة المحددة'}`
               : trip
-                ? `سيتم تسجيل المسافر في ${trip.name}`
+                ? `سيتم تسجيل المسافر في الرحلة رقم ${trip.tripNumber}`
                 : 'سيتم حفظ البيانات في سجل المعتمرين'}
           </div>
           <div className="flex flex-col-reverse gap-3 sm:flex-row">
