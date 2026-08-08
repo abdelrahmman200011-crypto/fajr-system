@@ -343,7 +343,7 @@ export default function POS({
             <div className="sm:col-span-2">
               <label className={labelClass}>
                 الاسم الكامل
-                {selected ? '' : <span className="mr-1 text-xs font-bold text-red-500">*</span>}
+                {nameValue ? '' : <span className="mr-1 text-xs font-bold text-red-500">*</span>}
               </label>
               <input
                 type="text"
