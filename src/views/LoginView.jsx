@@ -11,8 +11,8 @@ const BRANCHES = [
     description: 'مقر الفرع الرئيسي',
   },
   {
-    user: { username: 'jazami', branch: 'الجزامي', role: 'user' },
-    label: 'فرع الجزامي',
+    user: { username: 'jazami', branch: 'جازان', role: 'user' },
+    label: 'فرع جازان',
     icon: Store,
     description: 'فرع جازان',
   },

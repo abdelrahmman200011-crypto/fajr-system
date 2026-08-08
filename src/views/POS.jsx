@@ -23,7 +23,6 @@ import { formatSAR } from '../data/mockData';
 import SearchableDropdown from '../components/SearchableDropdown';
 import PrintInvoice from '../components/PrintInvoice';
 
-const branches = ['الداير', 'جازان'];
 const paymentMethods = ['كاش', 'فيزا / شبكة', 'تحويل بنكي'];
 const nationalities = [
   'سعودي',
@@ -63,7 +62,6 @@ export default function POS({
     address: '',
   });
   const [tripId, setTripId] = useState('');
-  const [branch, setBranch] = useState(currentUserBranch || 'الداير');
   const [roomNumber, setRoomNumber] = useState('');
   const [bookingNotes, setBookingNotes] = useState('');
   const [paid, setPaid] = useState('');
@@ -121,6 +119,7 @@ export default function POS({
   const docValue = selectedClient ? selectedClient.documentId : clientDetails.documentId;
   const phoneValue = selectedClient ? selectedClient.phone : clientDetails.phone;
   const nationValue = selectedClient ? selectedClient.nationality : clientDetails.nationality;
+  const genderValue = selectedClient ? selectedClient.gender : clientDetails.gender;
 
   const canSubmit = Boolean(
     nameValue.trim() &&
@@ -173,7 +172,7 @@ export default function POS({
             }
           : null,
         tripId,
-        branch,
+        branch: currentUserBranch || 'الداير',
         roomNumber: roomNumber.trim(),
         bookingNotes: bookingNotes.trim(),
         paid: paidValue,
@@ -232,15 +231,15 @@ export default function POS({
               <h1 className="text-xl font-extrabold sm:text-2xl">
                 نقطة البيع — حجز جديد
               </h1>
-              <p className="mt-1 text-sm font-medium text-white/80">
-                نموذج واحد متواصل: اختر العميل، حدد الرحلة والفرع، أضف ملاحظات
+<p className="mt-1 text-sm font-medium text-white/80">
+                نموذج واحد متواصل: اختر العميل، حدد الرحلة، أضف ملاحظات
                 الغرفة، ثم أكّد الدفع وأصدر الفاتورة
               </p>
             </div>
           </div>
           <span className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-2.5 text-sm font-bold ring-1 ring-white/20">
             <Building2 className="h-5 w-5 text-amber-300" />
-            {currentUserBranch || branch}
+            {currentUserBranch || 'الداير'}
           </span>
         </div>
       </div>
@@ -378,6 +377,18 @@ export default function POS({
               />
             </div>
             <div>
+              <label className={labelClass}>الجنس</label>
+              <select
+                value={genderValue}
+                onChange={(e) => patchClientOrClear('gender', e.target.value)}
+                className={inputClass}
+              >
+                <option value="">— اختر الجنس —</option>
+                <option value="ذكر">ذكر</option>
+                <option value="أنثى">أنثى</option>
+              </select>
+            </div>
+            <div>
               <label className={labelClass}>الجنسية</label>
               <select
                 value={nationValue}
@@ -403,7 +414,7 @@ export default function POS({
           </div>
         </section>
 
-        {/* B. Trip & branch */}
+        {/* B. Trip */}
         <section className={cardClass}>
           <div className="mb-5 flex items-center gap-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl text-lg font-extrabold text-white bg-gradient-to-br from-sky-500 to-blue-700 shadow-lg">
@@ -412,78 +423,47 @@ export default function POS({
             <div>
               <h3 className="flex items-center gap-2 text-base font-extrabold text-gray-900">
                 <Bus className="h-5 w-5 text-sky-600" />
-                الرحلة والفرع
+                الرحلة
               </h3>
               <p className="text-xs font-medium text-gray-500">
-                اختر الرحلة النشطة، وحدد فرع الحجز المرتبط بالعميل
+                اختر الرحلة النشطة لهذا الحجز
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div>
-              <label className={labelClass}>الرحلة</label>
-              <div className="relative">
-                <Bus className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <select
-                  value={tripId}
-                  onChange={(e) => {
-                    setSuccess(null);
-                    setTripId(e.target.value);
-                    setError('');
-                  }}
-                  className={`${inputClass} appearance-none pr-10`}
-                >
-                  <option value="">— اختر الرحلة —</option>
-                  {trips.map((t) => {
-                    const free = remainingSeats(t);
-                    const isFull = free <= 0;
-                    return (
-                      <option key={t.id} value={t.id} disabled={isFull}>
-                        [{t.tripNumber}] {t.destination} · {formatSAR(t.price)}{' '}
-                        {isFull ? '— مكتملة' : `(متبقي ${free} مقاعد)`}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-              {selectedTrip && (
-                <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
-                  <Armchair className="h-3.5 w-3.5" />
-                  المقاعد المتاحة: {remainingSeats(selectedTrip)} — السعر للفرد{' '}
-                  {formatSAR(perPerson)}
-                </p>
-              )}
+          <div>
+            <label className={labelClass}>الرحلة</label>
+            <div className="relative">
+              <Bus className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <select
+                value={tripId}
+                onChange={(e) => {
+                  setSuccess(null);
+                  setTripId(e.target.value);
+                  setError('');
+                }}
+                className={`${inputClass} appearance-none pr-10`}
+              >
+                <option value="">— اختر الرحلة —</option>
+                {trips.map((t) => {
+                  const free = remainingSeats(t);
+                  const isFull = free <= 0;
+                  return (
+                    <option key={t.id} value={t.id} disabled={isFull}>
+                      [{t.tripNumber}] {t.destination} · {formatSAR(t.price)}{' '}
+                      {isFull ? '— مكتملة' : `(متبقي ${free} مقاعد)`}
+                    </option>
+                  );
+                })}
+              </select>
             </div>
-
-            <div>
-              <label className={labelClass}>الفرع</label>
-              <div className="flex flex-wrap items-center gap-2">
-                {branches.map((b) => (
-                  <label
-                    key={b}
-                    className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 px-4 py-3 text-sm font-bold transition ${
-                      branch === b
-                        ? 'border-emerald-500 bg-emerald-50 text-emerald-800 shadow-sm'
-                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="branch"
-                      value={b}
-                      checked={branch === b}
-                      onChange={() => setBranch(b)}
-                      className="h-4 w-4 accent-emerald-600"
-                    />
-                    فرع {b}
-                  </label>
-                ))}
-              </div>
-              <p className="mt-2 text-xs font-medium text-gray-400">
-                يُحفظ الفرع في وثيقة الحجز للتقارير والفصل المحاسبي
+            {selectedTrip && (
+              <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
+                <Armchair className="h-3.5 w-3.5" />
+                المقاعد المتاحة: {remainingSeats(selectedTrip)} — السعر للفرد{' '}
+                {formatSAR(perPerson)}
               </p>
-            </div>
+            )}
           </div>
         </section>
 
