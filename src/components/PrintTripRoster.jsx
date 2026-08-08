@@ -152,15 +152,15 @@ export default function PrintTripRoster({ trip, passengers }) {
     if (!r) return { id: i + 1 };
     return {
       id: i + 1,
-      name: r.passenger?.fullName || '',
-      nationalId: r.passenger?.documentId || '',
-      phone: r.passenger?.phone || '',
-      nationality: r.passenger?.nationality || '',
-      paymentType: invoiceMethod(r.inv),
-      paidAmount: r.inv?.paidAmount ?? r.inv?.paid ?? '',
-      address: r.passenger?.address || '',
-      roomNumber: r.passenger?.roomNumber || '',
-      notes: r.passenger?.notes || '',
+      name: r.name || r.passenger?.fullName || '',
+      nationalId: r.documentId || r.passenger?.documentId || '',
+      phone: r.phone || r.passenger?.phone || '',
+      nationality: r.nationality || r.passenger?.nationality || '',
+      paymentType: r.payType || invoiceMethod(r.inv),
+      paidAmount: r.amount ?? r.inv?.paidAmount ?? r.inv?.paid ?? '',
+      address: r.address || r.passenger?.address || '',
+      roomNumber: r.roomNumber || r.passenger?.roomNumber || '',
+      notes: r.notes || r.passenger?.notes || '',
     };
   });
 
@@ -246,6 +246,46 @@ export default function PrintTripRoster({ trip, passengers }) {
         </tfoot>
       </table>
 
+      {/* SECTION 2b — Trip notes (if any) */}
+      {(trip?.luggageInstructions || trip?.generalNotes) && (
+        <div className="mt-6 break-inside-avoid print:break-inside-avoid">
+          <p
+            className="mb-2 text-xs font-extrabold"
+            style={{ color: BRAND_BROWN }}
+          >
+            ملاحظات الرحلة العامة
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {trip?.luggageInstructions && (
+              <div className="rounded-md border border-gray-300 bg-gray-50 p-3">
+                <p
+                  className="text-[11px] font-extrabold"
+                  style={{ color: BRAND_BROWN }}
+                >
+                  تعليمات الأمتعة (للسائق / المشرف)
+                </p>
+                <p className="mt-1 whitespace-pre-wrap text-xs font-semibold leading-relaxed text-black">
+                  {trip.luggageInstructions}
+                </p>
+              </div>
+            )}
+            {trip?.generalNotes && (
+              <div className="rounded-md border border-gray-300 bg-gray-50 p-3">
+                <p
+                  className="text-[11px] font-extrabold"
+                  style={{ color: BRAND_BROWN }}
+                >
+                  ملاحظات عامة على الرحلة
+                </p>
+                <p className="mt-1 whitespace-pre-wrap text-xs font-semibold leading-relaxed text-black">
+                  {trip.generalNotes}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* SECTION 3 — Stamps / signatures */}
       <div className="mt-6 break-inside-avoid print:break-inside-avoid">
         <p className="mb-2 text-xs font-extrabold" style={{ color: BRAND_BROWN }}>
@@ -271,6 +311,24 @@ export default function PrintTripRoster({ trip, passengers }) {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* SECTION 3b — Formal signature block */}
+      <div className="mt-8 break-inside-avoid print:break-inside-avoid">
+        <p
+          className="mb-2 text-xs font-extrabold"
+          style={{ color: BRAND_BROWN }}
+        >
+          اعتماد الكشف
+        </p>
+        <div className="flex items-start justify-between gap-10">
+          {['توقيع المشرف', 'توقيع السائق', 'ختم الشركة'].map((label) => (
+            <div key={label} className="flex-1 text-center">
+              <div className="h-12 border-b-2 border-dashed border-gray-400" />
+              <p className="mt-2 text-sm font-extrabold text-black">{label}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* SECTION 4 — Page break + Medina roster */}

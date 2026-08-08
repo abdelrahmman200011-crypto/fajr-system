@@ -22,6 +22,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Building2,
+  NotebookPen,
 } from 'lucide-react';
 import {
   formatSAR,
@@ -110,6 +111,8 @@ export default function UnifiedBookingView({
   const [printNode, setPrintNode] = useState(null);
   const [invoiceToPrint, setInvoiceToPrint] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
+  const [roomNumber, setRoomNumber] = useState('');
+  const [bookingNotes, setBookingNotes] = useState('');
 
   useEffect(() => {
     const el = document.createElement('div');
@@ -219,6 +222,8 @@ export default function UnifiedBookingView({
     setPaid('');
     setPaymentMethod('');
     setCheckedIds(new Set());
+    setRoomNumber('');
+    setBookingNotes('');
   };
 
   const toggleChecked = (key) => {
@@ -376,6 +381,8 @@ export default function UnifiedBookingView({
       paymentMethod: methodRequired ? paymentMethod : '',
       coveredPassengers,
       coveredCount,
+      roomNumber: roomNumber.trim(),
+      bookingNotes: bookingNotes.trim(),
     });
 
     const invoiceTotal = coveredCount * perPerson;
@@ -406,6 +413,8 @@ export default function UnifiedBookingView({
     setNewMain(emptyPerson);
     setNewCompanions([]);
     setCompanionCount(0);
+    setRoomNumber('');
+    setBookingNotes('');
     setCurrentStep(1);
 
     window.setTimeout(() => window.print(), 150);
@@ -422,6 +431,8 @@ export default function UnifiedBookingView({
     setNewMain(emptyPerson);
     setNewCompanions([]);
     setCompanionCount(0);
+    setRoomNumber('');
+    setBookingNotes('');
     setError('');
     setCurrentStep(1);
   };
@@ -1184,6 +1195,48 @@ export default function UnifiedBookingView({
                 لا يُطلب تحديد طريقة دفع عندما يكون المدفوع 0
               </p>
             )}
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-amber-200/70 bg-amber-50/40 p-5">
+            <h4 className="flex items-center gap-2 text-sm font-extrabold text-amber-800">
+              <NotebookPen className="h-4 w-4" />
+              بيانات إضافية للحجز
+              <span className="text-xs font-semibold text-amber-600">
+                (اختياري)
+              </span>
+            </h4>
+            <p className="mt-1 text-xs font-medium text-amber-700/80">
+              رقم الغرفة المخصصة إن وجد، وأي ملاحظات خاصة بالمعتمر — تُطبع هذه
+              البيانات على الفاتورة
+            </p>
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className={labelClass}>رقم الغرفة</label>
+                <input
+                  type="text"
+                  value={roomNumber}
+                  onChange={(e) => {
+                    setSuccess(null);
+                    setRoomNumber(e.target.value);
+                  }}
+                  placeholder="مثال: 218"
+                  className={inputClass}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className={labelClass}>ملاحظات الحجز</label>
+                <textarea
+                  value={bookingNotes}
+                  onChange={(e) => {
+                    setSuccess(null);
+                    setBookingNotes(e.target.value);
+                  }}
+                  rows={2}
+                  placeholder="مثال: يحتاج كرسي متحرك عند الوصول"
+                  className={`${inputClass} w-full resize-none`}
+                />
+              </div>
+            </div>
           </div>
           </section>
         )}

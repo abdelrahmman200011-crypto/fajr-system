@@ -4,12 +4,10 @@ import {
   Users,
   ReceiptText,
   X,
-  Store,
 } from 'lucide-react';
 
 export const NAV_TABS = [
   { id: 'dashboard', label: 'الرئيسية', icon: LayoutDashboard },
-  { id: 'booking', label: 'نقطة البيع الموحدة', icon: Store },
   { id: 'trips', label: 'الرحلات', icon: Route },
   { id: 'passengers', label: 'المسافرون', icon: Users },
   { id: 'invoices', label: 'الفواتير والمالية', icon: ReceiptText },

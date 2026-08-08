@@ -207,6 +207,26 @@ export default function PrintInvoice({ invoice }) {
                   </p>
                 </div>
               </div>
+              {(invoice.roomNumber || invoice.bookingNotes) && (
+                <div className="mt-3 grid grid-cols-3 gap-3">
+                  {invoice.roomNumber && (
+                    <div className={infoCell}>
+                      <p className="text-xs font-bold" style={{ color: BRAND_BROWN }}>رقم الغرفة</p>
+                      <p className="mt-0.5 text-sm font-extrabold text-black" dir="ltr">
+                        {invoice.roomNumber}
+                      </p>
+                    </div>
+                  )}
+                  {invoice.bookingNotes && (
+                    <div className={`${infoCell} ${invoice.roomNumber ? 'col-span-2' : 'col-span-3'} whitespace-pre-wrap`}>
+                      <p className="text-xs font-bold" style={{ color: BRAND_BROWN }}>ملاحظات الحجز</p>
+                      <p className="mt-0.5 text-sm font-semibold text-black">
+                        {invoice.bookingNotes}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {Array.isArray(invoice.coveredPassengers) &&

@@ -198,6 +198,14 @@ export default function App() {
     await deleteDoc(doc(db, 'trips', id));
   };
 
+  const saveTripPassengers = async (tripId, rows, extras = {}) => {
+    await updateDoc(doc(db, 'trips', tripId), {
+      passengers: rows,
+      bookedCount: rows.length,
+      ...extras,
+    });
+  };
+
   /* ---------- Invoices ---------- */
   const addInvoice = (data) => {
     const firstPaid = Number(data.paid) || 0;
@@ -293,6 +301,8 @@ export default function App() {
           currentUser={currentUser}
           onAddTrip={addTrip}
           onDeleteTrip={deleteTrip}
+          onSaveTripPassengers={saveTripPassengers}
+          onAddClient={addPassengers}
         />
       );
       break;

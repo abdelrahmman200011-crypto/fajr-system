@@ -21,6 +21,7 @@ import {
   CalendarDays,
   Banknote,
   IdCard,
+  NotebookPen,
 } from 'lucide-react';
 import {
   formatSAR,
@@ -272,6 +273,40 @@ export default function InvoiceDetailsView({
               </div>
             </div>
           </section>
+
+          {/* Extra booking details */}
+          {(invoice?.roomNumber || invoice?.bookingNotes) && (
+            <section className="rounded-2xl border border-white/70 bg-white/70 p-5 shadow-soft backdrop-blur-xl">
+              <h3
+                className={`mb-4 flex items-center gap-2 text-sm font-extrabold text-amber-700`}
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
+                  <NotebookPen className="h-4 w-4" />
+                </span>
+                بيانات إضافية للحجز
+              </h3>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {invoice?.roomNumber && (
+                  <div>
+                    <p className="text-xs font-bold text-gray-400">رقم الغرفة</p>
+                    <p className="mt-1 font-extrabold text-gray-900" dir="ltr">
+                      {invoice.roomNumber}
+                    </p>
+                  </div>
+                )}
+                {invoice?.bookingNotes && (
+                  <div className={invoice?.roomNumber ? '' : 'sm:col-span-2'}>
+                    <p className="text-xs font-bold text-gray-400">
+                      ملاحظات الحجز
+                    </p>
+                    <p className="mt-1 whitespace-pre-wrap text-sm font-bold text-gray-800">
+                      {invoice.bookingNotes}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
 
           {/* Package details */}
           {pkg && (

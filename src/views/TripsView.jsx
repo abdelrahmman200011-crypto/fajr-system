@@ -11,55 +11,71 @@ import {
   Route,
   Clock,
   User,
-  CreditCard,
   Phone,
   Car,
-  ChevronDown,
-  ChevronUp,
   Eye,
   Wallet,
   Banknote,
   TrendingUp,
   ArrowRight,
   CircleCheck,
-  CircleAlert,
   Printer,
   Hotel,
+  Save,
+  X,
+  UserPlus,
+  Table2,
+  Luggage,
 } from 'lucide-react';
 import { formatSAR, calculateTripStatus, invoiceTotals } from '../data/mockData';
-
-const paymentStyles = {
-  'مدفوع': 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  'عربون': 'bg-amber-50 text-amber-700 ring-amber-200',
-  'غير مدفوع': 'bg-rose-50 text-rose-600 ring-rose-200',
-};
-
-const methodStyles = {
-  'كاش': 'bg-gray-50 text-gray-600 ring-gray-200',
-  'فيزا / شبكة': 'bg-indigo-50 text-indigo-700 ring-indigo-200',
-  'تحويل بنكي': 'bg-teal-50 text-teal-700 ring-teal-200',
-};
+import AddTrip from './AddTrip';
 
 const invoiceMethod = (inv) =>
   inv.paymentMethod ||
   (inv.paymentType === 'بنك' ? 'تحويل بنكي' : inv.paymentType) ||
   'كاش';
 
-const emptyTrip = {
-  tripNumber: '',
-  destination: '',
-  gatheringPoint: '',
-  departure: '',
-  returnDate: '',
-  time: '10:00',
-  capacity: 49,
-  hotelName: '',
-  price: '',
-  driverName: '',
-  driverIqama: '',
-  driverPhone: '',
-  plate: '',
-};
+const nationalities = [
+  'سعودي',
+  'يمني',
+  'هندي',
+  'باكستاني',
+  'سوري',
+  'مصري',
+  'جزر القمر',
+  'إفريقي',
+  'أخرى',
+];
+
+const paymentTypes = ['كاش', 'فيزا / شبكة', 'تحويل بنكي'];
+
+const emptyRow = () => ({
+  id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+  name: '',
+  documentId: '',
+  phone: '',
+  nationality: '',
+  payType: '',
+  amount: '',
+  address: '',
+  roomNumber: '',
+  notes: '',
+  clientId: null,
+});
+
+const normalizeRow = (r) => ({
+  id: r.id || `r-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+  name: r.name || '',
+  documentId: r.documentId || '',
+  phone: r.phone || '',
+  nationality: r.nationality || '',
+  payType: r.payType || r.paymentType || '',
+  amount: r.amount ?? r.paidAmount ?? '',
+  address: r.address || '',
+  roomNumber: r.roomNumber || '',
+  notes: r.notes || '',
+  clientId: r.clientId || null,
+});
 
 const inputClass = 'input-field focus:border-emerald-500 focus:ring-emerald-500/20';
 const labelClass = 'mb-1.5 block text-sm font-semibold text-gray-700';
@@ -75,15 +91,29 @@ export default function TripsView({
   currentUser,
   onAddTrip,
   onDeleteTrip,
+  onSaveTripPassengers,
+  onAddClient,
 }) {
-  const [trip, setTrip] = useState(emptyTrip);
-  const [expanded, setExpanded] = useState(null);
+  const [view, setTripView] = useState('list'); // 'list' | 'add'
   const [selectedTripId, setSelectedTripId] = useState(null);
 
   const selectedTrip = useMemo(
     () => trips.find((t) => t.id === selectedTripId) || null,
     [trips, selectedTripId]
   );
+
+  if (view === 'add') {
+    return (
+      <AddTrip
+        onAddTrip={onAddTrip}
+        onCancel={() => setTripView('list')}
+        onCreated={(created) => {
+          setTripView('list');
+          if (created?.id) setSelectedTripId(created.id);
+        }}
+      />
+    );
+  }
 
   if (selectedTrip) {
     return (
@@ -93,25 +123,15 @@ export default function TripsView({
         invoices={invoices}
         packages={packages}
         services={services}
+        currentUser={currentUser}
         onBack={() => {
           setSelectedTripId(null);
-          setExpanded(null);
         }}
+        onSaveTripPassengers={onSaveTripPassengers}
+        onAddClient={onAddClient}
       />
     );
   }
-
-  const set = (field, value) => setTrip((prev) => ({ ...prev, [field]: value }));
-
-  const submit = (e) => {
-    e.preventDefault();
-    if (!trip.tripNumber.trim() || !trip.destination.trim() || !trip.departure) return;
-    if (trip.price !== '' && Number.isNaN(Number(trip.price))) return;
-    onAddTrip({ ...trip, price: Number(trip.price) || 0 });
-    setTrip(emptyTrip);
-  };
-
-  const toggle = (id) => setExpanded((prev) => (prev === id ? null : id));
 
   const occupied = (t) =>
     t.capacity > 0
@@ -127,254 +147,39 @@ export default function TripsView({
 
   return (
     <div className="space-y-6">
-      {/* Trip & Fleet Management form */}
-      <div className="rounded-2xl border border-white/70 bg-white/70 p-6 shadow-soft backdrop-blur-xl">
-        <h3 className="mb-5 flex items-center gap-2 text-base font-extrabold text-gray-900">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600/10 text-emerald-700">
-            <Route className="h-5 w-5" />
-          </span>
-          إدارة الرحلة والأسطول
-          <span className="rounded-full bg-emerald-600/10 px-3 py-0.5 text-xs font-bold text-emerald-700">
-            رحلة جديدة
-          </span>
-        </h3>
-
-        <form onSubmit={submit} className="space-y-6">
-          {/* Core trip info */}
-          <section>
-            <div className="mb-4 flex items-center gap-2.5">
-              <Bus className="h-5 w-5 text-emerald-700" />
-              <h4 className="text-sm font-extrabold text-gray-800">
-                معلومات الرحلة
-              </h4>
-              <span className="h-px flex-1 bg-gradient-to-l from-emerald-200 to-transparent" />
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <label className={labelClass}>رقم الرحلة</label>
-                  <input
-                    type="text"
-                    value={trip.tripNumber}
-                    onChange={(e) => set('tripNumber', e.target.value)}
-                    placeholder="مثال: TR-123"
-                    className={inputClass}
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>نقطة التجمع / نقطة الانطلاق</label>
-                  <input
-                    type="text"
-                    value={trip.gatheringPoint}
-                    onChange={(e) => set('gatheringPoint', e.target.value)}
-                    placeholder="مثال: محطة رمسيس أمام المدخل الرئيسي"
-                    className={inputClass}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className={labelClass}>الوجهة</label>
-                <div className="relative">
-                  <MapPin className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    value={trip.destination}
-                    onChange={(e) => set('destination', e.target.value)}
-                    placeholder="مكة المكرمة"
-                    className={`${inputClass} pr-10`}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className={labelClass}>تاريخ الذهاب</label>
-                <div className="relative">
-                  <CalendarDays className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="date"
-                    value={trip.departure}
-                    onChange={(e) => set('departure', e.target.value)}
-                    className={`${inputClass} pr-10`}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className={labelClass}>تاريخ العودة</label>
-                <div className="relative">
-                  <CalendarDays className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="date"
-                    value={trip.returnDate}
-                    onChange={(e) => set('returnDate', e.target.value)}
-                    className={`${inputClass} pr-10`}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className={labelClass}>الوقت</label>
-                <div className="relative">
-                  <Clock className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="time"
-                    value={trip.time}
-                    onChange={(e) => set('time', e.target.value)}
-                    className={`${inputClass} pr-10`}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className={labelClass}>الطاقة الاستيعابية / الحمولة</label>
-                <div className="relative">
-                  <Armchair className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="number"
-                    min="1"
-                    value={trip.capacity}
-                    onChange={(e) => set('capacity', Number(e.target.value))}
-                    className={`${inputClass} pr-10`}
-                  />
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Accommodation hotel + price */}
-          <section>
-            <div className="mb-4 flex items-center gap-2.5">
-              <Hotel className="h-5 w-5 text-teal-600" />
-              <h4 className="text-sm font-extrabold text-gray-800">
-                الإقامة والتسعير
-              </h4>
-              <span className="h-px flex-1 bg-gradient-to-l from-teal-200 to-transparent" />
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className={labelClass}>اسم الفندق (نص حر)</label>
-                <div className="relative">
-                  <Hotel className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    value={trip.hotelName}
-                    onChange={(e) => set('hotelName', e.target.value)}
-                    placeholder="مثال: فندق أبراج الراحة — مكة"
-                    className={`${inputClass} pr-10`}
-                  />
-                </div>
-                <p className="mt-1.5 text-xs font-medium text-gray-400">
-                  اسم الفندق يُكتب يدوياً ولا يرتبط بقسم إدارة الفنادق
-                </p>
-              </div>
-
-              <div>
-                <label className={labelClass}>سعر الرحلة للفرد</label>
-                <div className="relative">
-                  <Wallet className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="number"
-                    min="0"
-                    value={trip.price}
-                    onChange={(e) => set('price', e.target.value)}
-                    placeholder="0"
-                    className={`${inputClass} pr-10`}
-                  />
-                </div>
-                <p className="mt-1.5 text-xs font-medium text-gray-400">
-                  يُستخدم هذا السعر تلقائياً عند إصدار الفواتير من نقطة البيع
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Driver & bus info */}
-          <section>
-            <div className="mb-4 flex items-center gap-2.5">
-              <Car className="h-5 w-5 text-amber-600" />
-              <h4 className="text-sm font-extrabold text-gray-800">
-                السائق والحافلة
-              </h4>
-              <span className="h-px flex-1 bg-gradient-to-l from-amber-200 to-transparent" />
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className={labelClass}>اسم السائق</label>
-                <div className="relative">
-                  <User className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    value={trip.driverName}
-                    onChange={(e) => set('driverName', e.target.value)}
-                    placeholder="مثال: عبدالله سالم الزهراني"
-                    className={`${inputClass} pr-10`}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className={labelClass}>رقم الإقامة</label>
-                <div className="relative">
-                  <CreditCard className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    value={trip.driverIqama}
-                    onChange={(e) => set('driverIqama', e.target.value)}
-                    placeholder="رقم الإقامة / الهوية"
-                    className={`${inputClass} pr-10`}
-                    inputMode="numeric"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className={labelClass}>رقم جوال السائق</label>
-                <div className="relative">
-                  <Phone className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="tel"
-                    value={trip.driverPhone}
-                    onChange={(e) => set('driverPhone', e.target.value)}
-                    placeholder="05xxxxxxxx"
-                    className={`${inputClass} pr-10`}
-                    inputMode="tel"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className={labelClass}>رقم اللوحة</label>
-                <input
-                  type="text"
-                  value={trip.plate}
-                  onChange={(e) => set('plate', e.target.value)}
-                  placeholder="4875 د ن"
-                  className={`${inputClass} text-center font-bold tracking-widest`}
-                  dir="ltr"
-                />
-              </div>
-            </div>
-          </section>
-
-          <button type="submit" className="btn-primary w-full sm:w-auto">
-            <Plus className="h-4 w-4" />
-            إنشاء الرحلة
-          </button>
-        </form>
+      {/* Page header + Add Trip button */}
+      <div className="flex flex-col gap-4 rounded-2xl border border-white/70 bg-white/70 p-6 shadow-soft backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-700/25">
+            <Bus className="h-7 w-7 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl font-extrabold text-gray-900 sm:text-2xl">
+              الرحلات المسجلة
+            </h1>
+            <p className="mt-1 text-sm font-medium text-gray-500">
+              {trips.length} رحلة — اضغط على أي رحلة لعرض تفاصيلها
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setTripView('add')}
+          className="btn-primary w-full sm:w-auto"
+        >
+          <Plus className="h-4 w-4" />
+          أضف رحلة جديدة
+        </button>
       </div>
 
-      {/* Trips table */}
+      {/* Trips list */}
       <div className="rounded-2xl border border-white/70 bg-white/70 shadow-soft backdrop-blur-xl">
         <div className="flex items-center justify-between border-b border-gray-100/80 p-6 pb-4">
           <h3 className="flex items-center gap-2 text-base font-extrabold text-gray-900">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
               <Bus className="h-5 w-5" />
             </span>
-            الرحلات المسجلة
+            قائمة الرحلات
           </h3>
           <span className="rounded-full bg-emerald-600/10 px-3 py-1 text-xs font-bold text-emerald-700">
             {trips.length} رحلة
@@ -396,18 +201,15 @@ export default function TripsView({
             <tbody>
               {trips.map((t) => {
                 const pct = occupied(t);
-                const isOpen = expanded === t.id;
                 const tripStatus = calculateTripStatus(t, t.bookedCount ?? 0);
                 return (
                   <FragmentRow
                     key={t.id}
                     t={t}
                     status={tripStatus}
-                    isOpen={isOpen}
                     pct={pct}
                     barColor={barColor(t)}
                     formatDate={formatDate}
-                    onToggle={() => toggle(t.id)}
                     onView={() => setSelectedTripId(t.id)}
                     canDelete={currentUser?.role === 'admin'}
                     onDelete={() => onDeleteTrip(t.id)}
@@ -427,80 +229,72 @@ export default function TripsView({
 function FragmentRow({
   t,
   status,
-  isOpen,
   pct,
   barColor,
   formatDate,
-  onToggle,
   onView,
   canDelete,
   onDelete,
 }) {
   return (
-    <>
-      <tr className="border-t border-gray-100 transition-colors hover:bg-emerald-50/40">
-        <td className="px-6 py-4">
-          <p className="font-bold text-gray-800" dir="ltr">{t.tripNumber}</p>
-          <p className="text-xs font-medium text-gray-400">
-            {t.hotelName || 'بدون فندق'}
-          </p>
-        </td>
-        <td className="px-6 py-4">
-          <span className="inline-flex items-center gap-1.5 font-semibold text-gray-600">
-            <MapPin className="h-4 w-4 text-amber-600" />
-            {t.destination}
-          </span>
-        </td>
-        <td className="max-w-[180px] truncate px-6 py-4 text-xs font-semibold text-gray-600" title={t.gatheringPoint}>
-          {t.gatheringPoint || '—'}
-        </td>
-        <td className="px-6 py-4 font-semibold text-gray-600" dir="ltr">
-          {formatDate(t.departure)}
-        </td>
-        <td className="px-6 py-4">
-          <span className="inline-flex items-center gap-1.5 font-bold text-gray-800">
-            <Armchair className="h-4 w-4 text-emerald-600" />
-            {t.capacity}
-            <span className="text-xs font-medium text-gray-400">مقعد</span>
-          </span>
-          <div className="mt-1.5 h-1.5 w-32 overflow-hidden rounded-full bg-gray-100">
-            <div
-              className={`h-full rounded-full transition-all ${barColor}`}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-          <p className="mt-1 text-[10px] font-bold text-gray-400">
-            محجوز {t.bookedCount ?? 0} / {t.capacity}
-          </p>
-        </td>
-        <td className="px-6 py-4">
+    <tr
+      onClick={onView}
+      className="cursor-pointer border-t border-gray-100 transition-colors hover:bg-emerald-50/60 group"
+    >
+      <td className="px-6 py-4">
+        <p className="font-bold text-gray-800" dir="ltr">{t.tripNumber}</p>
+        <p className="text-xs font-medium text-gray-400">
+          {t.hotelName || 'بدون فندق'}
+        </p>
+      </td>
+      <td className="px-6 py-4">
+        <span className="inline-flex items-center gap-1.5 font-semibold text-gray-600">
+          <MapPin className="h-4 w-4 text-amber-600" />
+          {t.destination}
+        </span>
+      </td>
+      <td className="max-w-[180px] truncate px-6 py-4 text-xs font-semibold text-gray-600" title={t.gatheringPoint}>
+        {t.gatheringPoint || '—'}
+      </td>
+      <td className="px-6 py-4 font-semibold text-gray-600" dir="ltr">
+        {formatDate(t.departure)}
+      </td>
+      <td className="px-6 py-4">
+        <span className="inline-flex items-center gap-1.5 font-bold text-gray-800">
+          <Armchair className="h-4 w-4 text-emerald-600" />
+          {t.capacity}
+          <span className="text-xs font-medium text-gray-400">مقعد</span>
+        </span>
+        <div className="mt-1.5 h-1.5 w-32 overflow-hidden rounded-full bg-gray-100">
+          <div
+            className={`h-full rounded-full transition-all ${barColor}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <p className="mt-1 text-[10px] font-bold text-gray-400">
+          محجوز {t.bookedCount ?? 0} / {t.capacity}
+        </p>
+      </td>
+      <td className="px-6 py-4">
+        <span
+          className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ring-1 ${status.color} ${status.ring}`}
+        >
+          {status.text}
+        </span>
+      </td>
+      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-center gap-1.5">
           <span
-            className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ring-1 ${status.color} ${status.ring}`}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition group-hover:bg-emerald-50 group-hover:text-emerald-600"
+            aria-label="عرض التفاصيل"
+            title="عرض التفاصيل"
           >
-            {status.text}
+            <Eye className="h-4 w-4" />
           </span>
-        </td>
-        <td className="px-6 py-4">
-          <div className="flex items-center justify-center gap-1.5">
+          {canDelete && (
             <button
-              onClick={onView}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-emerald-50 hover:text-emerald-600"
-              aria-label="عرض التفاصيل"
-              title="عرض التفاصيل"
-            >
-              <Eye className="h-4 w-4" />
-            </button>
-            <button
-              onClick={onToggle}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-amber-50 hover:text-amber-600"
-              aria-label="إظهار تفاصيل الرحلة"
-              title="إظهار تفاصيل الرحلة"
-            >
-              {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </button>
-            {canDelete && (
-            <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 if (
                   window.confirm(
                     `هل تريد حذف الرحلة رقم «${t.tripNumber}» نهائياً من النظام؟`
@@ -515,103 +309,10 @@ function FragmentRow({
             >
               <Trash2 className="h-4 w-4" />
             </button>
-            )}
-          </div>
-        </td>
-      </tr>
-
-      {isOpen && (
-        <tr className="border-t border-dashed border-emerald-100/80 bg-gradient-to-b from-emerald-50/40 to-amber-50/20">
-          <td colSpan={7} className="px-6 py-5">
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <div className="rounded-2xl bg-white/80 p-5 ring-1 ring-emerald-100">
-                <h4 className="mb-4 flex items-center gap-2 text-sm font-extrabold text-gray-800">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600/10 text-emerald-700">
-                    <CalendarDays className="h-4 w-4" />
-                  </span>
-                  جدول الرحلة
-                </h4>
-                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-                  <div>
-                    <p className="text-xs font-bold text-gray-400">تاريخ الذهاب</p>
-                    <p className="mt-0.5 font-bold text-gray-800" dir="ltr">
-                      {formatDate(t.departure)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-gray-400">تاريخ العودة</p>
-                    <p className="mt-0.5 font-bold text-gray-800" dir="ltr">
-                      {formatDate(t.returnDate)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-gray-400">الوقت</p>
-                    <p className="mt-0.5">
-                      <span
-                        className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700 ring-1 ring-amber-200"
-                        dir="ltr"
-                      >
-                        <Clock className="h-3.5 w-3.5" />
-                        {t.time || '10:00'}
-                      </span>
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-gray-400">الحالة</p>
-                    <p className="mt-0.5">
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ring-1 ${status.color} ${status.ring}`}
-                      >
-                        {status.text}
-                      </span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl bg-white/80 p-5 ring-1 ring-amber-100">
-                <h4 className="mb-4 flex items-center gap-2 text-sm font-extrabold text-gray-800">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600">
-                    <Bus className="h-4 w-4" />
-                  </span>
-                  السائق والحافلة
-                </h4>
-                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-                  <div className="sm:col-span-2">
-                    <p className="text-xs font-bold text-gray-400">اسم السائق</p>
-                    <p className="mt-0.5 font-bold text-gray-800">
-                      {t.driverName || '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-gray-400">رقم الإقامة</p>
-                    <p className="mt-0.5 font-bold text-gray-800" dir="ltr">
-                      {t.driverIqama || '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-gray-400">جوال السائق</p>
-                    <p className="mt-0.5 font-bold text-gray-800" dir="ltr">
-                      {t.driverPhone || '—'}
-                    </p>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <p className="text-xs font-bold text-gray-400">رقم اللوحة</p>
-                    <p
-                      className="mt-1 inline-flex items-center gap-1.5 rounded-lg border-2 border-gray-800/80 bg-white px-4 py-1.5 text-sm font-extrabold tracking-widest text-gray-900"
-                      dir="ltr"
-                    >
-                      <Car className="h-4 w-4 text-amber-600" />
-                      {t.plate || '—'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </td>
-        </tr>
-      )}
-    </>
+          )}
+        </div>
+      </td>
+    </tr>
   );
 }
 
@@ -641,9 +342,19 @@ function TripDetails({
   invoices,
   packages,
   services,
+  currentUser,
   onBack,
+  onSaveTripPassengers,
+  onAddClient,
 }) {
   const [printNode, setPrintNode] = useState(null);
+  const [manifest, setManifest] = useState([]);
+  const [nameFocus, setNameFocus] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
+  const [clientFlash, setClientFlash] = useState(null);
+  const [luggageInstructions, setLuggageInstructions] = useState('');
+  const [generalNotes, setGeneralNotes] = useState('');
 
   useEffect(() => {
     const el = document.createElement('div');
@@ -653,9 +364,9 @@ function TripDetails({
     return () => el.remove();
   }, []);
 
-  const { rows, expected, collected, remaining, collectionPct } = useMemo(() => {
+  const { bookings, expected, collected, remaining, collectionPct } = useMemo(() => {
     const tripInvoices = invoices.filter((inv) => inv.tripId === trip.id);
-    const rows = tripInvoices.map((inv) => {
+    const bookings = tripInvoices.map((inv) => {
       const passenger = passengers.find((p) => p.id === inv.passengerId) || null;
       const { total, paid, remaining } = invoiceTotals(inv, packages, services);
       let status = 'غير مدفوع';
@@ -663,13 +374,158 @@ function TripDetails({
       else if (paid > 0) status = 'عربون';
       return { inv, passenger, total, paid, remaining, status };
     });
-    const expected = rows.reduce((a, r) => a + r.total, 0);
-    const collected = rows.reduce((a, r) => a + r.paid, 0);
+    const expected = bookings.reduce((a, r) => a + r.total, 0);
+    const collected = bookings.reduce((a, r) => a + r.paid, 0);
     const remaining = Math.max(expected - collected, 0);
     const collectionPct =
       expected > 0 ? Math.round((collected / expected) * 100) : 0;
-    return { rows, expected, collected, remaining, collectionPct };
+    return { bookings, expected, collected, remaining, collectionPct };
   }, [trip.id, invoices, passengers, packages, services]);
+
+  /* ---- seed the editable sheet from trip.passengers (or legacy bookings) ---- */
+  useEffect(() => {
+    if (Array.isArray(trip.passengers) && trip.passengers.length > 0) {
+      setManifest(trip.passengers.map(normalizeRow));
+      return;
+    }
+    setManifest(
+      bookings.map((b) =>
+        normalizeRow({
+          name: b.passenger?.fullName || '',
+          documentId: b.passenger?.documentId,
+          phone: b.passenger?.phone,
+          nationality: b.passenger?.nationality,
+          payType: invoiceMethod(b.inv),
+          amount: b.paid,
+          address: b.passenger?.address,
+          roomNumber: b.passenger?.roomNumber,
+          notes: b.passenger?.notes,
+          clientId: b.passenger?.id,
+        })
+      )
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trip.id]);
+
+  /* ---- keep luggage instructions & general notes in sync with the trip ---- */
+  useEffect(() => {
+    setLuggageInstructions(trip.luggageInstructions || '');
+    setGeneralNotes(trip.generalNotes || '');
+  }, [trip.id, trip.luggageInstructions, trip.generalNotes]);
+
+  const updateRow = (id, patch) =>
+    setManifest((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+
+  const addRow = () => {
+    setSavedFlash(false);
+    setManifest((prev) => [...prev, emptyRow()]);
+  };
+
+  const removeRow = (id) => {
+    setSavedFlash(false);
+    setManifest((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const suggestionsFor = (text) => {
+    const q = (text || '').trim().toLowerCase();
+    if (!q) return [];
+    return passengers
+      .filter((p) => (p.fullName || '').toLowerCase().includes(q))
+      .slice(0, 6);
+  };
+
+  const applyClient = (rowId, p) => {
+    const row = manifest.find((r) => r.id === rowId);
+    updateRow(rowId, {
+      name: p.fullName,
+      documentId: p.documentId || row?.documentId || '',
+      phone: p.phone || row?.phone || '',
+      nationality: p.nationality || row?.nationality || '',
+      address: p.address || row?.address || '',
+      clientId: p.id,
+    });
+    setNameFocus(null);
+    setSavedFlash(false);
+  };
+
+  const canSaveClient = (row) =>
+    row.name.trim().length > 0 &&
+    !passengers.some(
+      (p) =>
+        (p.fullName || '').trim().toLowerCase() ===
+        row.name.trim().toLowerCase()
+    );
+
+  const handleSaveClient = async (row) => {
+    const name = row.name.trim();
+    if (!name) return;
+    const existing = passengers.find(
+      (p) =>
+        (p.fullName || '').trim().toLowerCase() === name.toLowerCase()
+    );
+    if (existing) {
+      applyClient(row.id, existing);
+      setClientFlash(`العميل «${name}» موجود بالفعل — تم تعبئة بياناته`);
+    } else {
+      try {
+        const created = await onAddClient([
+          {
+            fullName: name,
+            documentId: row.documentId.trim(),
+            phone: row.phone.trim(),
+            address: row.address.trim(),
+            nationality: row.nationality,
+            gender: '',
+            branch: currentUser?.branch || '',
+          },
+        ]);
+        updateRow(row.id, { clientId: created[0]?.id });
+        setClientFlash(`تم حفظ العميل «${name}» في السجل`);
+      } catch (err) {
+        console.error(err);
+        setClientFlash('تعذر حفظ العميل، حاول مجدداً');
+      }
+    }
+    window.setTimeout(() => setClientFlash(null), 3500);
+  };
+
+  const saveManifest = async (flash = true) => {
+    const cleaned = manifest
+      .map((r) => ({
+        ...r,
+        name: r.name.trim(),
+        documentId: r.documentId.trim(),
+        phone: r.phone.trim(),
+        address: r.address.trim(),
+        roomNumber: r.roomNumber.trim(),
+        notes: r.notes.trim(),
+        amount: r.amount === '' ? '' : Number(r.amount),
+      }))
+      .filter((r) => r.name);
+    setSaving(true);
+    try {
+      await onSaveTripPassengers(trip.id, cleaned, {
+        luggageInstructions: luggageInstructions.trim(),
+        generalNotes: generalNotes.trim(),
+      });
+      if (flash) {
+        setSavedFlash(true);
+        window.setTimeout(() => setSavedFlash(false), 3000);
+      }
+    } catch (err) {
+      console.error('فشل حفظ كشف الرحلة:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveNotes = () => {
+    setSavedFlash(false);
+    saveManifest(false).then(() => {
+      setSavedFlash(true);
+      window.setTimeout(() => setSavedFlash(false), 3000);
+    });
+  };
 
   const capacity = trip.capacity || 0;
   const booked = trip.bookedCount ?? 0;
@@ -871,7 +727,7 @@ function TripDetails({
               {formatSAR(expected)}
             </p>
             <p className="mt-1 text-xs font-medium text-emerald-50/80">
-              {rows.length} فاتورة مسجلة
+              {bookings.length} فاتورة مسجلة
             </p>
           </div>
 
@@ -909,135 +765,320 @@ function TripDetails({
         </div>
       </section>
 
-      {/* Section 3 — Passengers roster */}
-      <section className="overflow-hidden rounded-2xl border border-white/70 bg-white/70 shadow-soft backdrop-blur-xl">
-        <div className="flex items-center justify-between border-b border-gray-100/80 p-6 pb-4">
-          <h3 className="flex items-center gap-2 text-base font-extrabold text-gray-900">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600/10 text-emerald-700">
-              <User className="h-5 w-5" />
-            </span>
-            قائمة ركاب الرحلة
-          </h3>
-          <span className="rounded-full bg-emerald-600/10 px-3 py-1 text-xs font-bold text-emerald-700">
-            {rows.length} مسافر
-          </span>
+      {/* Section 3 — Inline editable passengers spreadsheet */}
+      <section className="overflow-hidden rounded-2xl border border-white/70 bg-white/80 shadow-soft backdrop-blur-xl">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100/80 p-6 pb-4">
+          <div>
+            <h3 className="flex items-center gap-2 text-base font-extrabold text-gray-900">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600/10 text-emerald-700">
+                <User className="h-5 w-5" />
+              </span>
+              كشف الحجاج
+            </h3>
+            <p className="mt-1 text-xs font-medium text-gray-400">
+              إدخال مباشر على الجدول — الاسم يُكمل تلقائياً من سجل العملاء،
+              والعميل الجديد يُحفظ بزر «+»
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {savedFlash && (
+              <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
+                <CircleCheck className="h-3.5 w-3.5" />
+                تم حفظ الكشف بنجاح
+              </span>
+            )}
+            {clientFlash && (
+              <span className="inline-flex items-center gap-1 rounded-lg bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700 ring-1 ring-sky-200">
+                <CircleCheck className="h-3.5 w-3.5" />
+                {clientFlash}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={saveManifest}
+              disabled={saving}
+              className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-gray-800 disabled:opacity-50"
+            >
+              <Save className="h-4 w-4" />
+              {saving ? 'جارٍ الحفظ...' : 'حفظ الكشف'}
+            </button>
+            <button
+              type="button"
+              onClick={addRow}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/25 transition hover:bg-emerald-700"
+            >
+              <Plus className="h-4 w-4" />
+              إضافة صف
+            </button>
+          </div>
         </div>
 
-        {rows.length === 0 ? (
+        {manifest.length === 0 ? (
           <div className="px-6 py-16 text-center">
-            <Bus className="mx-auto mb-3 h-10 w-10 text-gray-300" />
+            <Table2 className="mx-auto mb-3 h-10 w-10 text-gray-300" />
             <p className="text-base font-bold text-gray-500">
-              لا توجد ركاب مسجلة لهذه الرحلة
+              لا يوجد ركاب مسجلون في هذا الكشف
             </p>
             <p className="mt-1 text-sm text-gray-400">
-              قم بإصدار فواتير لهذه الرحلة من صفحة الفواتير
+              اضغط «إضافة صف» لبدء إدخال بيانات المعتمرين
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1080px] text-right text-sm">
+            <table className="w-full min-w-[1360px] text-right text-sm">
               <thead>
                 <tr className="bg-gray-50/80 text-xs font-bold uppercase tracking-wide text-gray-500">
-                  <th className="px-4 py-3.5 text-center">م</th>
-                  <th className="px-4 py-3.5 text-right">اسم المسافر</th>
-                  <th className="px-4 py-3.5 text-right">رقم الجوال</th>
-                  <th className="px-4 py-3.5 text-right">رقم الوثيقة</th>
-                  <th className="px-4 py-3.5 text-right">نوع الدفع</th>
-                  <th className="px-4 py-3.5 text-right">المدفوع</th>
-                  <th className="px-4 py-3.5 text-right">حالة الدفع</th>
-                  <th className="px-4 py-3.5 text-right">المتبقي</th>
-                  <th className="px-4 py-3.5 text-right">العنوان</th>
-                  <th className="px-4 py-3.5 text-center">الغرفة</th>
-                  <th className="px-4 py-3.5 text-right">ملاحظة</th>
+                  <th className="w-10 px-2 py-3.5 text-center">م</th>
+                  <th className="min-w-[200px] px-2 py-3.5 text-right">الاسم</th>
+                  <th className="w-[140px] px-2 py-3.5 text-right">السجل / الإقامة</th>
+                  <th className="w-[130px] px-2 py-3.5 text-right">رقم الجوال</th>
+                  <th className="w-[110px] px-2 py-3.5 text-right">الجنسية</th>
+                  <th className="w-[120px] px-2 py-3.5 text-right">نوع الدفع</th>
+                  <th className="w-[100px] px-2 py-3.5 text-center">القيمة</th>
+                  <th className="w-[150px] px-2 py-3.5 text-right">العنوان</th>
+                  <th className="w-[76px] px-2 py-3.5 text-center">الغرفة</th>
+                  <th className="w-[160px] px-2 py-3.5 text-right">ملاحظة</th>
+                  <th className="w-12 px-2 py-3.5 text-center">حذف</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r, i) => (
-                  <tr
-                    key={r.inv.id}
-                    className="border-t border-gray-100 transition-colors hover:bg-emerald-50/40"
-                  >
-                    <td className="px-4 py-4 text-center font-bold text-gray-400">
-                      {i + 1}
-                    </td>
-                    <td className="px-4 py-4">
-                      <p className="inline-flex items-center gap-1 font-bold text-gray-800">
-                        <CircleCheck
-                          className={`h-4 w-4 ${r.status === 'مدفوع' ? 'text-emerald-500' : r.status === 'عربون' ? 'text-amber-500' : 'text-rose-400'}`}
+                {manifest.map((row, i) => {
+                  const sugg = nameFocus === row.id ? suggestionsFor(row.name) : [];
+                  const showSaveClient = canSaveClient(row);
+                  return (
+                    <tr
+                      key={row.id}
+                      className="border-t border-gray-100 transition-colors hover:bg-emerald-50/30"
+                    >
+                      <td className="px-2 py-2 text-center font-bold text-gray-400">
+                        {i + 1}
+                      </td>
+                      <td className="px-2 py-2">
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={row.name}
+                            onChange={(e) => {
+                              updateRow(row.id, { name: e.target.value });
+                              setNameFocus(row.id);
+                              setSavedFlash(false);
+                            }}
+                            onFocus={() => setNameFocus(row.id)}
+                            onBlur={() => window.setTimeout(() => setNameFocus(null), 120)}
+                            placeholder="اكتب اسم العميل..."
+                            className={`${inputClass} min-w-[170px] ${showSaveClient ? 'pl-9' : ''}`}
+                          />
+                          {sugg.length > 0 && (
+                            <div className="absolute z-30 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-emerald-100 bg-white p-1 shadow-xl">
+                              {sugg.map((p) => (
+                                <button
+                                  key={p.id}
+                                  type="button"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => applyClient(row.id, p)}
+                                  className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-right text-sm transition hover:bg-emerald-50"
+                                >
+                                  <span className="truncate font-bold text-gray-800">
+                                    {p.fullName}
+                                  </span>
+                                  {p.documentId && (
+                                    <span className="shrink-0 text-[11px] text-gray-400" dir="ltr">
+                                      {p.documentId}
+                                    </span>
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {showSaveClient && (
+                            <button
+                              type="button"
+                              onClick={() => handleSaveClient(row)}
+                              className="absolute left-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm transition hover:bg-emerald-700"
+                              title="حفظ العميل الجديد في السجل"
+                            >
+                              <UserPlus className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          type="text"
+                          dir="ltr"
+                          value={row.documentId}
+                          onChange={(e) => updateRow(row.id, { documentId: e.target.value })}
+                          placeholder="رقم الهوية / الإقامة"
+                          className={inputClass}
                         />
-                        {r.passenger?.fullName || 'مسافر محذوف'}
-                      </p>
-                      {r.passenger?.familyId && (
-                        <p className="mt-0.5 text-[10px] font-bold text-violet-500">
-                          {r.passenger.familyId}
-                        </p>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 font-semibold text-gray-600" dir="ltr">
-                      {r.passenger?.phone || '—'}
-                    </td>
-                    <td className="px-4 py-4 font-semibold text-gray-600" dir="ltr">
-                      {r.passenger?.documentId || '—'}
-                    </td>
-                    <td className="px-4 py-4">
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ring-1 ${
-                          methodStyles[invoiceMethod(r.inv)] ||
-                          'bg-gray-50 text-gray-600 ring-gray-200'
-                        }`}
-                      >
-                        {invoiceMethod(r.inv)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 font-bold text-gray-800">
-                      {formatSAR(r.inv.paidAmount ?? r.paid)}
-                    </td>
-                    <td className="px-4 py-4">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ring-1 ${paymentStyles[r.status]}`}
-                      >
-                        {r.status === 'مدفوع' ? (
-                          <CircleCheck className="h-3.5 w-3.5" />
-                        ) : (
-                          <CircleAlert className="h-3.5 w-3.5" />
-                        )}
-                        {r.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4">
-                      <span
-                        className={`font-extrabold ${
-                          r.remaining > 0 ? 'text-amber-600' : 'text-emerald-600'
-                        }`}
-                      >
-                        {formatSAR(r.remaining)}
-                      </span>
-                    </td>
-                    <td className="max-w-[180px] truncate px-4 py-4 text-xs font-semibold text-gray-600" title={r.passenger?.address}>
-                      {r.passenger?.address || '—'}
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <span className="inline-flex items-center justify-center rounded-lg bg-emerald-50 px-2 py-0.5 font-extrabold text-emerald-700 ring-1 ring-emerald-200">
-                        {r.passenger?.roomNumber || '—'}
-                      </span>
-                    </td>
-                    <td className="max-w-[140px] truncate px-4 py-4 text-xs font-semibold text-gray-500" title={r.passenger?.notes}>
-                      {r.passenger?.notes || '—'}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          type="tel"
+                          dir="ltr"
+                          value={row.phone}
+                          onChange={(e) => updateRow(row.id, { phone: e.target.value })}
+                          placeholder="05xxxxxxxx"
+                          className={inputClass}
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <select
+                          value={row.nationality}
+                          onChange={(e) => updateRow(row.id, { nationality: e.target.value })}
+                          className={inputClass}
+                        >
+                          <option value="">—</option>
+                          {nationalities.map((n) => (
+                            <option key={n} value={n}>{n}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-2 py-2">
+                        <select
+                          value={row.payType}
+                          onChange={(e) => updateRow(row.id, { payType: e.target.value })}
+                          className={inputClass}
+                        >
+                          <option value="">—</option>
+                          {paymentTypes.map((n) => (
+                            <option key={n} value={n}>{n}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          dir="ltr"
+                          value={row.amount}
+                          onChange={(e) => updateRow(row.id, { amount: e.target.value })}
+                          placeholder="0"
+                          className={`${inputClass} text-center`}
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          type="text"
+                          value={row.address}
+                          onChange={(e) => updateRow(row.id, { address: e.target.value })}
+                          placeholder="المنطقة / المدينة"
+                          className={inputClass}
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          type="text"
+                          dir="ltr"
+                          value={row.roomNumber}
+                          onChange={(e) => updateRow(row.id, { roomNumber: e.target.value })}
+                          placeholder="—"
+                          className={`${inputClass} text-center`}
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          type="text"
+                          value={row.notes}
+                          onChange={(e) => updateRow(row.id, { notes: e.target.value })}
+                          placeholder="مثال: كرسي متحرك"
+                          className={inputClass}
+                        />
+                      </td>
+                      <td className="px-2 py-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => removeRow(row.id)}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-500"
+                          title="حذف الصف"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
+              <tfoot>
+                <tr className="border-t border-gray-100 bg-gray-50/60">
+                  <td colSpan={6} className="px-4 py-3 text-xs font-bold text-gray-500">
+                    {manifest.length} صف — اضغط «حفظ الكشف» لتخزين البيانات في الرحلة
+                  </td>
+                  <td className="px-2 py-3 text-center font-extrabold text-emerald-700">
+                    {formatSAR(
+                      manifest.reduce((a, r) => a + (Number(r.amount) || 0), 0)
+                    )}
+                  </td>
+                  <td colSpan={4} />
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}
       </section>
 
+      {/* Section 4 — Luggage instructions & general notes */}
+      <section className="rounded-2xl border border-white/70 bg-white/80 p-6 shadow-soft backdrop-blur-xl">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="flex items-center gap-2 text-base font-extrabold text-gray-900">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
+              <Luggage className="h-5 w-5" />
+            </span>
+            معلومات الأمتعة والملاحظات العامة
+          </h3>
+          <div className="flex flex-wrap items-center gap-2">
+            {savedFlash && (
+              <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
+                <CircleCheck className="h-3.5 w-3.5" />
+                تم حفظ الملاحظات
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={saveNotes}
+              disabled={saving}
+              className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-gray-800 disabled:opacity-50"
+            >
+              <Save className="h-4 w-4" />
+              {saving ? 'جارٍ الحفظ...' : 'حفظ الملاحظات'}
+            </button>
+          </div>
+        </div>
+        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <div>
+            <label className={labelClass}>
+              تعليمات الأمتعة (للسائق / المشرف)
+            </label>
+            <textarea
+              value={luggageInstructions}
+              onChange={(e) => {
+                setLuggageInstructions(e.target.value);
+                setSavedFlash(false);
+              }}
+              rows={4}
+              placeholder="مثال: يُمنع فتح صناديق الحقائب بعد 06:00 مساءً، تأكد من ربط الأمتعة جيداً قبل الانطلاق..."
+              className={`${inputClass} w-full resize-none`}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>ملاحظات عامة على الرحلة</label>
+            <textarea
+              value={generalNotes}
+              onChange={(e) => {
+                setGeneralNotes(e.target.value);
+                setSavedFlash(false);
+              }}
+              rows={4}
+              placeholder="مثال: التوقف المخطط له في محطة الباحة، مدة التوقف 15 دقيقة..."
+              className={`${inputClass} w-full resize-none`}
+            />
+          </div>
+        </div>
+      </section>
+
       {/* ===== Printable Official Manifest (portal to body, print only) ===== */}
       {printNode &&
-        createPortal(
-          <PrintTripRoster trip={trip} passengers={rows} />,
-          printNode
-        )}
+        createPortal(<PrintTripRoster trip={trip} passengers={manifest} />, printNode)}
     </div>
   );
 }
