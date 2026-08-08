@@ -107,7 +107,7 @@ export default function POS({
   const patchClientOrClear = (field, value) => {
     setSuccess(null);
     setClientId('');
-    patchClient(field, value);
+    patch(field, value);
   };
 
   const patch = (field, value) => {

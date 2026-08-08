@@ -5,6 +5,7 @@ import {
   getDocs,
   addDoc,
   updateDoc,
+  setDoc,
   deleteDoc,
   doc,
   increment,
@@ -19,7 +20,7 @@ import PassengersView from './views/PassengersView';
 import InvoicesView from './views/InvoicesView';
 import POS from './views/POS';
 import InvoiceDetailsView from './views/InvoiceDetailsView';
-import PassengerDetailsView from './views/PassengerDetailsView';
+import ClientProfile from './views/ClientProfile';
 import { invoiceTotals, calculateTripStatus } from './data/mockData';
 
 const nextId = (list) =>
@@ -226,6 +227,19 @@ export default function App() {
         { ...newClient, gender: newClient?.gender || '', branch },
       ]);
       client = created[0];
+      try {
+        await setDoc(doc(db, 'clients', client.id), {
+          fullName: client.fullName,
+          documentId: client.documentId || '',
+          phone: client.phone || '',
+          nationality: client.nationality || '',
+          gender: client.gender || '',
+          address: client.address || '',
+          branch,
+        });
+      } catch (error) {
+        console.error('فشل حفظ العميل في سجل العملاء:', error);
+      }
     }
 
     const trip = trips.find((t) => t.id === tripId) || null;
@@ -296,6 +310,7 @@ export default function App() {
     const invoice = {
       ...data,
       id: nextId(invoices),
+      createdAt: new Date().toISOString().slice(0, 10),
       perPerson,
       paxCount,
       totalAmount,
@@ -353,7 +368,7 @@ export default function App() {
     detailInvoiceId != null
       ? 'تفاصيل الفاتورة'
       : detailPassengerId != null
-        ? 'ملف المسافر'
+        ? 'ملف العميل'
         : NAV_TABS.find((t) => t.id === activeView)?.label || 'الرئيسية';
 
   let view;
@@ -455,8 +470,8 @@ export default function App() {
     );
   } else if (detailPassengerId != null) {
     view = (
-      <PassengerDetailsView
-        passengerId={detailPassengerId}
+      <ClientProfile
+        clientId={detailPassengerId}
         passengers={passengers}
         invoices={invoices}
         trips={trips}
