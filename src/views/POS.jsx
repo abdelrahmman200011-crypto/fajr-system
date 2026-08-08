@@ -106,7 +106,9 @@ export default function POS({
 
   const patchClientOrClear = (field, value) => {
     setSuccess(null);
-    setClientId('');
+    if (field === 'fullName') {
+      setClientId('');
+    }
     patch(field, value);
   };
 
@@ -115,11 +117,11 @@ export default function POS({
     setClientDetails((prev) => ({ ...prev, [field]: value }));
   };
 
-  const nameValue = selectedClient ? selectedClient.fullName : clientDetails.fullName;
-  const docValue = selectedClient ? selectedClient.documentId : clientDetails.documentId;
-  const phoneValue = selectedClient ? selectedClient.phone : clientDetails.phone;
-  const nationValue = selectedClient ? selectedClient.nationality : clientDetails.nationality;
-  const genderValue = selectedClient ? selectedClient.gender : clientDetails.gender;
+  const nameValue = clientDetails.fullName;
+  const docValue = clientDetails.documentId;
+  const phoneValue = clientDetails.phone;
+  const nationValue = clientDetails.nationality;
+  const genderValue = clientDetails.gender;
 
   const canSubmit = Boolean(
     nameValue.trim() &&
