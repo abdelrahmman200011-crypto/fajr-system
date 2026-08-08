@@ -17,7 +17,7 @@ import DashboardView from './views/DashboardView';
 import TripsView from './views/TripsView';
 import PassengersView from './views/PassengersView';
 import InvoicesView from './views/InvoicesView';
-import UnifiedBookingView from './views/UnifiedBookingView';
+import POS from './views/POS';
 import InvoiceDetailsView from './views/InvoiceDetailsView';
 import PassengerDetailsView from './views/PassengerDetailsView';
 import { invoiceTotals, calculateTripStatus } from './data/mockData';
@@ -206,6 +206,74 @@ export default function App() {
     });
   };
 
+  /* ---------- POS Booking: save client + invoice + append to trip ---------- */
+  const confirmBooking = async ({
+    existingClientId,
+    newClient,
+    tripId,
+    branch,
+    roomNumber,
+    bookingNotes,
+    paid,
+    paymentMethod,
+  }) => {
+    let client;
+    if (existingClientId) {
+      client = passengers.find((p) => p.id === existingClientId) || null;
+      if (!client) throw new Error('Client not found');
+    } else {
+      const created = await addPassengers([
+        { ...newClient, gender: newClient?.gender || '', branch },
+      ]);
+      client = created[0];
+    }
+
+    const trip = trips.find((t) => t.id === tripId) || null;
+    if (!trip) throw new Error('Trip not found');
+
+    const invoice = addInvoice({
+      passengerId: client.id,
+      tripId,
+      paid,
+      paidAmount: paid,
+      paymentMethod,
+      coveredCount: 1,
+      coveredPassengers: [
+        { id: client.id, fullName: client.fullName, isPrimary: true },
+      ],
+      roomNumber,
+      bookingNotes,
+      branch,
+    });
+
+    const row = {
+      id: `b-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: client.fullName,
+      documentId: client.documentId || '',
+      phone: client.phone || '',
+      nationality: client.nationality || '',
+      payType: paymentMethod || '',
+      amount: Number(paid) || 0,
+      address: client.address || '',
+      roomNumber: roomNumber || '',
+      notes: bookingNotes || '',
+      clientId: client.id,
+    };
+
+    try {
+      const currentPassengers = Array.isArray(trip.passengers)
+        ? trip.passengers
+        : [];
+      await updateDoc(doc(db, 'trips', tripId), {
+        passengers: [...currentPassengers, row],
+      });
+    } catch (error) {
+      console.error('فشل إضافة الحاج إلى كشف الرحلة:', error);
+    }
+
+    return { invoice, passenger: client, trip };
+  };
+
   /* ---------- Invoices ---------- */
   const addInvoice = (data) => {
     const firstPaid = Number(data.paid) || 0;
@@ -308,14 +376,11 @@ export default function App() {
       break;
     case 'booking':
       view = (
-        <UnifiedBookingView
+        <POS
           passengers={passengers}
           trips={trips}
-          packages={packages}
-          services={services}
           currentUserBranch={currentUser.branch}
-          onAddPassengers={addPassengers}
-          onAddInvoice={addInvoice}
+          onConfirmBooking={confirmBooking}
           onViewInvoice={(id) => {
             setDetailInvoiceId(id);
             window.scrollTo({ top: 0, behavior: 'smooth' });

@@ -22,8 +22,6 @@ import {
   Printer,
   Hotel,
   Save,
-  X,
-  UserPlus,
   Table2,
   Luggage,
 } from 'lucide-react';
@@ -34,34 +32,6 @@ const invoiceMethod = (inv) =>
   inv.paymentMethod ||
   (inv.paymentType === 'بنك' ? 'تحويل بنكي' : inv.paymentType) ||
   'كاش';
-
-const nationalities = [
-  'سعودي',
-  'يمني',
-  'هندي',
-  'باكستاني',
-  'سوري',
-  'مصري',
-  'جزر القمر',
-  'إفريقي',
-  'أخرى',
-];
-
-const paymentTypes = ['كاش', 'فيزا / شبكة', 'تحويل بنكي'];
-
-const emptyRow = () => ({
-  id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-  name: '',
-  documentId: '',
-  phone: '',
-  nationality: '',
-  payType: '',
-  amount: '',
-  address: '',
-  roomNumber: '',
-  notes: '',
-  clientId: null,
-});
 
 const normalizeRow = (r) => ({
   id: r.id || `r-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -92,7 +62,6 @@ export default function TripsView({
   onAddTrip,
   onDeleteTrip,
   onSaveTripPassengers,
-  onAddClient,
 }) {
   const [view, setTripView] = useState('list'); // 'list' | 'add'
   const [selectedTripId, setSelectedTripId] = useState(null);
@@ -128,7 +97,6 @@ export default function TripsView({
           setSelectedTripId(null);
         }}
         onSaveTripPassengers={onSaveTripPassengers}
-        onAddClient={onAddClient}
       />
     );
   }
@@ -342,17 +310,12 @@ function TripDetails({
   invoices,
   packages,
   services,
-  currentUser,
   onBack,
   onSaveTripPassengers,
-  onAddClient,
 }) {
   const [printNode, setPrintNode] = useState(null);
-  const [manifest, setManifest] = useState([]);
-  const [nameFocus, setNameFocus] = useState(null);
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
-  const [clientFlash, setClientFlash] = useState(null);
   const [luggageInstructions, setLuggageInstructions] = useState('');
   const [generalNotes, setGeneralNotes] = useState('');
 
@@ -382,30 +345,26 @@ function TripDetails({
     return { bookings, expected, collected, remaining, collectionPct };
   }, [trip.id, invoices, passengers, packages, services]);
 
-  /* ---- seed the editable sheet from trip.passengers (or legacy bookings) ---- */
-  useEffect(() => {
+  /* ---- derived read-only passenger list from trip.passengers (or legacy bookings) ---- */
+  const manifest = useMemo(() => {
     if (Array.isArray(trip.passengers) && trip.passengers.length > 0) {
-      setManifest(trip.passengers.map(normalizeRow));
-      return;
+      return trip.passengers.map(normalizeRow);
     }
-    setManifest(
-      bookings.map((b) =>
-        normalizeRow({
-          name: b.passenger?.fullName || '',
-          documentId: b.passenger?.documentId,
-          phone: b.passenger?.phone,
-          nationality: b.passenger?.nationality,
-          payType: invoiceMethod(b.inv),
-          amount: b.paid,
-          address: b.passenger?.address,
-          roomNumber: b.passenger?.roomNumber,
-          notes: b.passenger?.notes,
-          clientId: b.passenger?.id,
-        })
-      )
+    return bookings.map((b) =>
+      normalizeRow({
+        name: b.passenger?.fullName || '',
+        documentId: b.passenger?.documentId,
+        phone: b.passenger?.phone,
+        nationality: b.passenger?.nationality,
+        payType: invoiceMethod(b.inv),
+        amount: b.paid,
+        address: b.passenger?.address,
+        roomNumber: b.passenger?.roomNumber,
+        notes: b.passenger?.notes,
+        clientId: b.passenger?.id,
+      })
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trip.id]);
+  }, [trip.passengers, bookings]);
 
   /* ---- keep luggage instructions & general notes in sync with the trip ---- */
   useEffect(() => {
@@ -413,118 +372,24 @@ function TripDetails({
     setGeneralNotes(trip.generalNotes || '');
   }, [trip.id, trip.luggageInstructions, trip.generalNotes]);
 
-  const updateRow = (id, patch) =>
-    setManifest((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-
-  const addRow = () => {
-    setSavedFlash(false);
-    setManifest((prev) => [...prev, emptyRow()]);
-  };
-
-  const removeRow = (id) => {
-    setSavedFlash(false);
-    setManifest((prev) => prev.filter((r) => r.id !== id));
-  };
-
-  const suggestionsFor = (text) => {
-    const q = (text || '').trim().toLowerCase();
-    if (!q) return [];
-    return passengers
-      .filter((p) => (p.fullName || '').toLowerCase().includes(q))
-      .slice(0, 6);
-  };
-
-  const applyClient = (rowId, p) => {
-    const row = manifest.find((r) => r.id === rowId);
-    updateRow(rowId, {
-      name: p.fullName,
-      documentId: p.documentId || row?.documentId || '',
-      phone: p.phone || row?.phone || '',
-      nationality: p.nationality || row?.nationality || '',
-      address: p.address || row?.address || '',
-      clientId: p.id,
-    });
-    setNameFocus(null);
-    setSavedFlash(false);
-  };
-
-  const canSaveClient = (row) =>
-    row.name.trim().length > 0 &&
-    !passengers.some(
-      (p) =>
-        (p.fullName || '').trim().toLowerCase() ===
-        row.name.trim().toLowerCase()
-    );
-
-  const handleSaveClient = async (row) => {
-    const name = row.name.trim();
-    if (!name) return;
-    const existing = passengers.find(
-      (p) =>
-        (p.fullName || '').trim().toLowerCase() === name.toLowerCase()
-    );
-    if (existing) {
-      applyClient(row.id, existing);
-      setClientFlash(`العميل «${name}» موجود بالفعل — تم تعبئة بياناته`);
-    } else {
-      try {
-        const created = await onAddClient([
-          {
-            fullName: name,
-            documentId: row.documentId.trim(),
-            phone: row.phone.trim(),
-            address: row.address.trim(),
-            nationality: row.nationality,
-            gender: '',
-            branch: currentUser?.branch || '',
-          },
-        ]);
-        updateRow(row.id, { clientId: created[0]?.id });
-        setClientFlash(`تم حفظ العميل «${name}» في السجل`);
-      } catch (err) {
-        console.error(err);
-        setClientFlash('تعذر حفظ العميل، حاول مجدداً');
-      }
-    }
-    window.setTimeout(() => setClientFlash(null), 3500);
-  };
-
-  const saveManifest = async (flash = true) => {
-    const cleaned = manifest
-      .map((r) => ({
-        ...r,
-        name: r.name.trim(),
-        documentId: r.documentId.trim(),
-        phone: r.phone.trim(),
-        address: r.address.trim(),
-        roomNumber: r.roomNumber.trim(),
-        notes: r.notes.trim(),
-        amount: r.amount === '' ? '' : Number(r.amount),
-      }))
-      .filter((r) => r.name);
+  const saveNotes = async () => {
     setSaving(true);
     try {
-      await onSaveTripPassengers(trip.id, cleaned, {
-        luggageInstructions: luggageInstructions.trim(),
-        generalNotes: generalNotes.trim(),
-      });
-      if (flash) {
-        setSavedFlash(true);
-        window.setTimeout(() => setSavedFlash(false), 3000);
-      }
+      await onSaveTripPassengers(
+        trip.id,
+        manifest,
+        {
+          luggageInstructions: luggageInstructions.trim(),
+          generalNotes: generalNotes.trim(),
+        }
+      );
+      setSavedFlash(true);
+      window.setTimeout(() => setSavedFlash(false), 3000);
     } catch (err) {
-      console.error('فشل حفظ كشف الرحلة:', err);
+      console.error('فشل حفظ ملاحظات الرحلة:', err);
     } finally {
       setSaving(false);
     }
-  };
-
-  const saveNotes = () => {
-    setSavedFlash(false);
-    saveManifest(false).then(() => {
-      setSavedFlash(true);
-      window.setTimeout(() => setSavedFlash(false), 3000);
-    });
   };
 
   const capacity = trip.capacity || 0;
@@ -765,7 +630,7 @@ function TripDetails({
         </div>
       </section>
 
-      {/* Section 3 — Inline editable passengers spreadsheet */}
+      {/* Section 3 — Read-only passengers roster */}
       <section className="overflow-hidden rounded-2xl border border-white/70 bg-white/80 shadow-soft backdrop-blur-xl">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100/80 p-6 pb-4">
           <div>
@@ -776,224 +641,84 @@ function TripDetails({
               كشف الحجاج
             </h3>
             <p className="mt-1 text-xs font-medium text-gray-400">
-              إدخال مباشر على الجدول — الاسم يُكمل تلقائياً من سجل العملاء،
-              والعميل الجديد يُحفظ بزر «+»
+              المسافرون المرتبطون بهذه الرحلة — تُضاف الحجوزات من نقطة البيع
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {savedFlash && (
-              <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
-                <CircleCheck className="h-3.5 w-3.5" />
-                تم حفظ الكشف بنجاح
-              </span>
-            )}
-            {clientFlash && (
-              <span className="inline-flex items-center gap-1 rounded-lg bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700 ring-1 ring-sky-200">
-                <CircleCheck className="h-3.5 w-3.5" />
-                {clientFlash}
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={saveManifest}
-              disabled={saving}
-              className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-gray-800 disabled:opacity-50"
-            >
-              <Save className="h-4 w-4" />
-              {saving ? 'جارٍ الحفظ...' : 'حفظ الكشف'}
-            </button>
-            <button
-              type="button"
-              onClick={addRow}
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/25 transition hover:bg-emerald-700"
-            >
-              <Plus className="h-4 w-4" />
-              إضافة صف
-            </button>
-          </div>
+          <span className="rounded-full bg-emerald-600/10 px-3 py-1 text-xs font-bold text-emerald-700">
+            {manifest.length} مسافر
+          </span>
         </div>
 
         {manifest.length === 0 ? (
           <div className="px-6 py-16 text-center">
             <Table2 className="mx-auto mb-3 h-10 w-10 text-gray-300" />
             <p className="text-base font-bold text-gray-500">
-              لا يوجد ركاب مسجلون في هذا الكشف
+              لا يوجد ركاب مسجلون في هذه الرحلة
             </p>
             <p className="mt-1 text-sm text-gray-400">
-              اضغط «إضافة صف» لبدء إدخال بيانات المعتمرين
+              استخدم نقطة البيع لإضافة حجز لهذه الرحلة
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1360px] text-right text-sm">
+            <table className="w-full min-w-[1200px] text-right text-sm">
               <thead>
                 <tr className="bg-gray-50/80 text-xs font-bold uppercase tracking-wide text-gray-500">
-                  <th className="w-10 px-2 py-3.5 text-center">م</th>
-                  <th className="min-w-[200px] px-2 py-3.5 text-right">الاسم</th>
-                  <th className="w-[140px] px-2 py-3.5 text-right">السجل / الإقامة</th>
-                  <th className="w-[130px] px-2 py-3.5 text-right">رقم الجوال</th>
-                  <th className="w-[110px] px-2 py-3.5 text-right">الجنسية</th>
-                  <th className="w-[120px] px-2 py-3.5 text-right">نوع الدفع</th>
-                  <th className="w-[100px] px-2 py-3.5 text-center">القيمة</th>
-                  <th className="w-[150px] px-2 py-3.5 text-right">العنوان</th>
-                  <th className="w-[76px] px-2 py-3.5 text-center">الغرفة</th>
-                  <th className="w-[160px] px-2 py-3.5 text-right">ملاحظة</th>
-                  <th className="w-12 px-2 py-3.5 text-center">حذف</th>
+                  <th className="w-12 px-4 py-3.5 text-center">م</th>
+                  <th className="min-w-[200px] px-4 py-3.5 text-right">الاسم</th>
+                  <th className="w-[150px] px-4 py-3.5 text-right">السجل / الإقامة</th>
+                  <th className="w-[130px] px-4 py-3.5 text-right">رقم الجوال</th>
+                  <th className="w-[110px] px-4 py-3.5 text-right">الجنسية</th>
+                  <th className="w-[110px] px-4 py-3.5 text-right">نوع الدفع</th>
+                  <th className="w-[110px] px-4 py-3.5 text-center">القيمة</th>
+                  <th className="w-[90px] px-4 py-3.5 text-center">الغرفة</th>
+                  <th className="w-[160px] px-4 py-3.5 text-right">ملاحظة</th>
                 </tr>
               </thead>
               <tbody>
                 {manifest.map((row, i) => {
-                  const sugg = nameFocus === row.id ? suggestionsFor(row.name) : [];
-                  const showSaveClient = canSaveClient(row);
+                  const isPaid =
+                    Number(row.amount || 0) > 0 &&
+                    Number(row.amount || 0) >= Number(trip.price || 0);
                   return (
                     <tr
                       key={row.id}
                       className="border-t border-gray-100 transition-colors hover:bg-emerald-50/30"
                     >
-                      <td className="px-2 py-2 text-center font-bold text-gray-400">
+                      <td className="px-4 py-3 text-center font-bold text-gray-400">
                         {i + 1}
                       </td>
-                      <td className="px-2 py-2">
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={row.name}
-                            onChange={(e) => {
-                              updateRow(row.id, { name: e.target.value });
-                              setNameFocus(row.id);
-                              setSavedFlash(false);
-                            }}
-                            onFocus={() => setNameFocus(row.id)}
-                            onBlur={() => window.setTimeout(() => setNameFocus(null), 120)}
-                            placeholder="اكتب اسم العميل..."
-                            className={`${inputClass} min-w-[170px] ${showSaveClient ? 'pl-9' : ''}`}
-                          />
-                          {sugg.length > 0 && (
-                            <div className="absolute z-30 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-emerald-100 bg-white p-1 shadow-xl">
-                              {sugg.map((p) => (
-                                <button
-                                  key={p.id}
-                                  type="button"
-                                  onMouseDown={(e) => e.preventDefault()}
-                                  onClick={() => applyClient(row.id, p)}
-                                  className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-right text-sm transition hover:bg-emerald-50"
-                                >
-                                  <span className="truncate font-bold text-gray-800">
-                                    {p.fullName}
-                                  </span>
-                                  {p.documentId && (
-                                    <span className="shrink-0 text-[11px] text-gray-400" dir="ltr">
-                                      {p.documentId}
-                                    </span>
-                                  )}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                          {showSaveClient && (
-                            <button
-                              type="button"
-                              onClick={() => handleSaveClient(row)}
-                              className="absolute left-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm transition hover:bg-emerald-700"
-                              title="حفظ العميل الجديد في السجل"
-                            >
-                              <UserPlus className="h-4 w-4" />
-                            </button>
-                          )}
-                        </div>
+                      <td className="px-4 py-3 font-bold text-gray-800">
+                        {row.name}
                       </td>
-                      <td className="px-2 py-2">
-                        <input
-                          type="text"
-                          dir="ltr"
-                          value={row.documentId}
-                          onChange={(e) => updateRow(row.id, { documentId: e.target.value })}
-                          placeholder="رقم الهوية / الإقامة"
-                          className={inputClass}
-                        />
+                      <td className="px-4 py-3 font-semibold text-gray-600" dir="ltr">
+                        {row.documentId || '—'}
                       </td>
-                      <td className="px-2 py-2">
-                        <input
-                          type="tel"
-                          dir="ltr"
-                          value={row.phone}
-                          onChange={(e) => updateRow(row.id, { phone: e.target.value })}
-                          placeholder="05xxxxxxxx"
-                          className={inputClass}
-                        />
+                      <td className="px-4 py-3 font-semibold text-gray-600" dir="ltr">
+                        {row.phone || '—'}
                       </td>
-                      <td className="px-2 py-2">
-                        <select
-                          value={row.nationality}
-                          onChange={(e) => updateRow(row.id, { nationality: e.target.value })}
-                          className={inputClass}
+                      <td className="px-4 py-3 text-gray-600">{row.nationality || '—'}</td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ring-1 ${
+                            isPaid
+                              ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                              : 'bg-amber-50 text-amber-700 ring-amber-200'
+                          }`}
                         >
-                          <option value="">—</option>
-                          {nationalities.map((n) => (
-                            <option key={n} value={n}>{n}</option>
-                          ))}
-                        </select>
+                          {row.payType || '—'}
+                        </span>
                       </td>
-                      <td className="px-2 py-2">
-                        <select
-                          value={row.payType}
-                          onChange={(e) => updateRow(row.id, { payType: e.target.value })}
-                          className={inputClass}
-                        >
-                          <option value="">—</option>
-                          {paymentTypes.map((n) => (
-                            <option key={n} value={n}>{n}</option>
-                          ))}
-                        </select>
+                      <td className="px-4 py-3 text-center font-extrabold text-emerald-700">
+                        {formatSAR(Number(row.amount || 0))}
                       </td>
-                      <td className="px-2 py-2">
-                        <input
-                          type="number"
-                          min="0"
-                          dir="ltr"
-                          value={row.amount}
-                          onChange={(e) => updateRow(row.id, { amount: e.target.value })}
-                          placeholder="0"
-                          className={`${inputClass} text-center`}
-                        />
+                      <td className="px-4 py-3 text-center font-bold text-gray-700" dir="ltr">
+                        {row.roomNumber || '—'}
                       </td>
-                      <td className="px-2 py-2">
-                        <input
-                          type="text"
-                          value={row.address}
-                          onChange={(e) => updateRow(row.id, { address: e.target.value })}
-                          placeholder="المنطقة / المدينة"
-                          className={inputClass}
-                        />
-                      </td>
-                      <td className="px-2 py-2">
-                        <input
-                          type="text"
-                          dir="ltr"
-                          value={row.roomNumber}
-                          onChange={(e) => updateRow(row.id, { roomNumber: e.target.value })}
-                          placeholder="—"
-                          className={`${inputClass} text-center`}
-                        />
-                      </td>
-                      <td className="px-2 py-2">
-                        <input
-                          type="text"
-                          value={row.notes}
-                          onChange={(e) => updateRow(row.id, { notes: e.target.value })}
-                          placeholder="مثال: كرسي متحرك"
-                          className={inputClass}
-                        />
-                      </td>
-                      <td className="px-2 py-2 text-center">
-                        <button
-                          type="button"
-                          onClick={() => removeRow(row.id)}
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-500"
-                          title="حذف الصف"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
+                      <td className="px-4 py-3">
+                        <span className="line-clamp-2 text-xs font-medium text-gray-500">
+                          {row.notes || ''}
+                        </span>
                       </td>
                     </tr>
                   );
@@ -1002,14 +727,14 @@ function TripDetails({
               <tfoot>
                 <tr className="border-t border-gray-100 bg-gray-50/60">
                   <td colSpan={6} className="px-4 py-3 text-xs font-bold text-gray-500">
-                    {manifest.length} صف — اضغط «حفظ الكشف» لتخزين البيانات في الرحلة
+                    إجمالي المحصل من الحجوزات
                   </td>
-                  <td className="px-2 py-3 text-center font-extrabold text-emerald-700">
+                  <td className="px-4 py-3 text-center font-extrabold text-emerald-700">
                     {formatSAR(
                       manifest.reduce((a, r) => a + (Number(r.amount) || 0), 0)
                     )}
                   </td>
-                  <td colSpan={4} />
+                  <td colSpan={2} />
                 </tr>
               </tfoot>
             </table>
