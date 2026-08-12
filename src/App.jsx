@@ -146,6 +146,20 @@ export default function App() {
     return unsubscribe;
   }, []);
 
+  /* ---------- Invoices real-time sync (Firestore) ---------- */
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, 'invoices'),
+      (snapshot) => {
+        setInvoices(
+          snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+        );
+      },
+      (error) => console.error('فشل مزامنة الفواتير:', error)
+    );
+    return unsubscribe;
+  }, []);
+
   /* ---------- Passengers CRUD ---------- */
   const addPassengers = async (list) => {
     const created = [];
@@ -245,7 +259,7 @@ export default function App() {
     const trip = trips.find((t) => t.id === tripId) || null;
     if (!trip) throw new Error('Trip not found');
 
-    const invoice = addInvoice({
+    const invoice = await addInvoice({
       passengerId: client.id,
       tripId,
       paid,
@@ -289,7 +303,7 @@ export default function App() {
   };
 
   /* ---------- Invoices ---------- */
-  const addInvoice = (data) => {
+  const addInvoice = async (data) => {
     const firstPaid = Number(data.paid) || 0;
     const paymentHistory =
       firstPaid > 0
@@ -320,6 +334,11 @@ export default function App() {
       paymentMethod: firstPaid > 0 ? data.paymentMethod || 'كاش' : '',
       paymentHistory,
     };
+    try {
+      await setDoc(doc(db, 'invoices', String(invoice.id)), invoice);
+    } catch (error) {
+      console.error('فشل حفظ الفاتورة:', error);
+    }
     setInvoices((prev) => [invoice, ...prev]);
     if (trip) {
       updateDoc(doc(db, 'trips', trip.id), {
@@ -336,10 +355,16 @@ export default function App() {
     return invoice;
   };
 
-  const deleteInvoice = (id) =>
+  const deleteInvoice = async (id) => {
+    try {
+      await deleteDoc(doc(db, 'invoices', String(id)));
+    } catch (error) {
+      console.error('فشل حذف الفاتورة:', error);
+    }
     setInvoices((prev) => prev.filter((inv) => inv.id !== id));
+  };
 
-  const addPayment = (id, amount, method) =>
+  const addPayment = async (id, amount, method) => {
     setInvoices((prev) =>
       prev.map((inv) => {
         if (inv.id !== id) return inv;
@@ -354,15 +379,23 @@ export default function App() {
           },
         ];
         const paidTotal = history.reduce((acc, p) => acc + Number(p.amount || 0), 0);
-        return {
+        const updated = {
           ...inv,
           paid: paidTotal,
           paidAmount: paidTotal,
           paymentMethod: history[history.length - 1]?.method || '',
           paymentHistory: history,
         };
+        updateDoc(doc(db, 'invoices', String(id)), {
+          paid: paidTotal,
+          paidAmount: paidTotal,
+          paymentMethod: history[history.length - 1]?.method || '',
+          paymentHistory: history,
+        }).catch((error) => console.error('فشل تحديث دفعة الفاتورة:', error));
+        return updated;
       })
     );
+  };
 
   const pageTitle =
     detailInvoiceId != null
