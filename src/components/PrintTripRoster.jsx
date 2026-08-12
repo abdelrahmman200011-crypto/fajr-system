@@ -164,11 +164,6 @@ export default function PrintTripRoster({ trip, passengers }) {
     };
   });
 
-  const medinaTotal = 12;
-  const medinaRows = Array.from({ length: medinaTotal }, (_, i) => manifestRows[i] || { id: i + 1 });
-
-  const stamps = Array.from({ length: 15 }, (_, i) => i + 1);
-
   const th =
     'p-2 text-xs font-bold leading-tight text-white border border-gray-300';
   const td =
@@ -177,14 +172,14 @@ export default function PrintTripRoster({ trip, passengers }) {
   return (
     <div
       dir="rtl"
-      className="hidden bg-white text-black print:block"
+      className="hidden min-h-screen flex-col bg-white text-black print:flex"
       style={{
         fontFamily: "'Tahoma', 'Arial', 'Cairo', sans-serif",
         printColorAdjust: 'exact',
         WebkitPrintColorAdjust: 'exact',
       }}
     >
-      <style>{`@media print { @page { size: A4 portrait; margin: 10mm; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }`}</style>
+      <style>{`@media print { @page { size: A4 portrait; margin: 10mm; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .print-footer { position: fixed; bottom: 0; left: 0; right: 0; width: 100%; } .print-footer-spacer { height: 24mm; } }`}</style>
 
       {/* SECTION 2 — Main passengers table (exactly 49 rows) */}
       <table className="w-full border-collapse text-center">
@@ -237,13 +232,6 @@ export default function PrintTripRoster({ trip, passengers }) {
             </tr>
           ))}
         </tbody>
-        <tfoot>
-          <tr>
-            <td colSpan={10} className="pt-2">
-              <RibbonFooter />
-            </td>
-          </tr>
-        </tfoot>
       </table>
 
       {/* SECTION 2b — Trip notes (if any) */}
@@ -286,37 +274,10 @@ export default function PrintTripRoster({ trip, passengers }) {
         </div>
       )}
 
-      {/* SECTION 3 — Stamps / signatures */}
-      <div className="mt-6 break-inside-avoid print:break-inside-avoid">
-        <p className="mb-2 text-xs font-extrabold" style={{ color: BRAND_BROWN }}>
-          الأختام والتوقيعات
-        </p>
-        <table className="w-full border-collapse border border-gray-300 text-xs">
-          <tbody>
-            {[0, 1, 2].map((rowIdx) => (
-              <tr key={rowIdx} className="odd:bg-white even:bg-[#f6f9f5] print:break-inside-avoid">
-                {[0, 1, 2, 3, 4].map((colIdx) => {
-                  const n = rowIdx * 5 + colIdx + 1;
-                  const stamp = stamps[n - 1];
-                  return (
-                    <td
-                      key={colIdx}
-                      className={`${td} text-center`}
-                    >
-                      الرقم: {stamp} | نوعها: .............
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
       {/* SECTION 3b — Formal signature block */}
       <div className="mt-8 break-inside-avoid print:break-inside-avoid">
         <p
-          className="mb-2 text-xs font-extrabold"
+          className="mb-2 text-xs font-extrabold text-center"
           style={{ color: BRAND_BROWN }}
         >
           اعتماد الكشف
@@ -331,48 +292,13 @@ export default function PrintTripRoster({ trip, passengers }) {
         </div>
       </div>
 
-      {/* SECTION 4 — Page break + Medina roster */}
-      <div className="break-before-page print:break-before-page">
-        <div className="pt-6">
-          <PrintHeader compact logoClass="h-20" />
-          <p
-            className="my-3 text-center text-lg font-extrabold leading-tight"
-            style={{ color: BRAND_GREEN }}
-          >
-            كشف بيانات زوار المدينة المنورة
-            {trip.destination ? ` — ${trip.destination}` : ''}
-          </p>
-        </div>
-        <table className="w-full border-collapse border border-gray-300 text-center text-xs">
-          <thead>
-            <tr>
-              <th className={`${th} text-center`} style={{ backgroundColor: BRAND_GREEN }}>م</th>
-              <th className={th} style={{ backgroundColor: BRAND_GREEN }}>الاسم</th>
-              <th className={th} style={{ backgroundColor: BRAND_GREEN }}>السجل / الاقامة</th>
-              <th className={th} style={{ backgroundColor: BRAND_GREEN }}>رقم الجوال</th>
-              <th className={th} style={{ backgroundColor: BRAND_GREEN }}>ملاحظة</th>
-            </tr>
-          </thead>
-          <tbody>
-            {medinaRows.map((r) => (
-              <tr key={r.id} className="odd:bg-white even:bg-[#f6f9f5] print:break-inside-avoid">
-                <td className={`${td} text-center`}>{r.id}</td>
-                <td className={td}>{r.name || ''}</td>
-                <td className={`${td} text-center`} dir="ltr">{r.nationalId || ''}</td>
-                <td className={`${td} text-center`} dir="ltr">{r.phone || ''}</td>
-                <td className={td}>{r.notes || ''}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan={5} className="pt-2">
-                <RibbonFooter />
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+      {/* Spacer so the pinned footer never overlaps the last page's content */}
+      <div className="print-footer-spacer" />
+
+      {/* SECTION 4 — Pin contact footer to bottom of the printed page */}
+      <footer className="print-footer">
+        <RibbonFooter />
+      </footer>
     </div>
   );
 }
