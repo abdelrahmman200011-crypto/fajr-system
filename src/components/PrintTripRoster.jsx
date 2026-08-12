@@ -144,10 +144,9 @@ function RibbonFooter() {
 }
 
 export default function PrintTripRoster({ trip, passengers }) {
-  const totalRows = 49;
-  const capacity = trip?.capacity || 49;
+  const capacity = Number(trip?.capacity) || 49;
 
-  const manifestRows = Array.from({ length: totalRows }, (_, i) => {
+  const manifestRows = Array.from({ length: capacity }, (_, i) => {
     const r = passengers[i];
     if (!r) return { id: i + 1 };
     return {
@@ -181,7 +180,7 @@ export default function PrintTripRoster({ trip, passengers }) {
     >
       <style>{`@media print { @page { size: A4 portrait; margin: 10mm; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .print-footer { position: fixed; bottom: 0; left: 0; right: 0; width: 100%; } .print-footer-spacer { height: 24mm; } }`}</style>
 
-      {/* SECTION 2 — Main passengers table (exactly 49 rows) */}
+      {/* SECTION 2 — Main passengers table (capacity rows) */}
       <table className="w-full border-collapse text-center">
         <thead>
           {/* Spacious letterhead — repeats at the top of every page */}
@@ -234,45 +233,41 @@ export default function PrintTripRoster({ trip, passengers }) {
         </tbody>
       </table>
 
-      {/* SECTION 2b — Trip notes (if any) */}
-      {(trip?.luggageInstructions || trip?.generalNotes) && (
-        <div className="mt-6 break-inside-avoid print:break-inside-avoid">
-          <p
-            className="mb-2 text-xs font-extrabold"
-            style={{ color: BRAND_BROWN }}
-          >
-            ملاحظات الرحلة العامة
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            {trip?.luggageInstructions && (
-              <div className="rounded-md border border-gray-300 bg-gray-50 p-3">
-                <p
-                  className="text-[11px] font-extrabold"
-                  style={{ color: BRAND_BROWN }}
-                >
-                  تعليمات الأمتعة (للسائق / المشرف)
-                </p>
-                <p className="mt-1 whitespace-pre-wrap text-xs font-semibold leading-relaxed text-black">
-                  {trip.luggageInstructions}
-                </p>
-              </div>
-            )}
-            {trip?.generalNotes && (
-              <div className="rounded-md border border-gray-300 bg-gray-50 p-3">
-                <p
-                  className="text-[11px] font-extrabold"
-                  style={{ color: BRAND_BROWN }}
-                >
-                  ملاحظات عامة على الرحلة
-                </p>
-                <p className="mt-1 whitespace-pre-wrap text-xs font-semibold leading-relaxed text-black">
-                  {trip.generalNotes}
-                </p>
-              </div>
-            )}
+      {/* SECTION 2b — Luggage & general notes (always printed, above signatures) */}
+      <div className="mt-6 break-inside-avoid print:break-inside-avoid">
+        <p
+          className="mb-2 text-xs font-extrabold"
+          style={{ color: BRAND_BROWN }}
+        >
+          معلومات الأمتعة والملاحظات العامة
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-md border border-gray-300 bg-gray-50 p-3">
+            <p
+              className="text-[11px] font-extrabold"
+              style={{ color: BRAND_BROWN }}
+            >
+              تعليمات الأمتعة (للسائق / المشرف)
+            </p>
+            <p className="mt-1 whitespace-pre-wrap text-xs font-semibold leading-relaxed text-black">
+              {trip?.luggageInstructions
+                ? trip.luggageInstructions
+                : 'لا يوجد'}
+            </p>
+          </div>
+          <div className="rounded-md border border-gray-300 bg-gray-50 p-3">
+            <p
+              className="text-[11px] font-extrabold"
+              style={{ color: BRAND_BROWN }}
+            >
+              ملاحظات عامة على الرحلة
+            </p>
+            <p className="mt-1 whitespace-pre-wrap text-xs font-semibold leading-relaxed text-black">
+              {trip?.generalNotes ? trip.generalNotes : 'لا يوجد'}
+            </p>
           </div>
         </div>
-      )}
+      </div>
 
       {/* SECTION 3b — Formal signature block */}
       <div className="mt-8 break-inside-avoid print:break-inside-avoid">
