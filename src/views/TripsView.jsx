@@ -65,10 +65,43 @@ export default function TripsView({
 }) {
   const [view, setTripView] = useState('list'); // 'list' | 'add'
   const [selectedTripId, setSelectedTripId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const selectedTrip = useMemo(
     () => trips.find((t) => t.id === selectedTripId) || null,
     [trips, selectedTripId]
+  );
+
+  const filteredTrips = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    return trips.filter((t) => {
+      const matchesQuery =
+        !q ||
+        (t.tripNumber || '').toLowerCase().includes(q) ||
+        (t.destination || '').toLowerCase().includes(q) ||
+        (t.gatheringPoint || '').toLowerCase().includes(q) ||
+        (t.hotelName || '').toLowerCase().includes(q);
+
+      const status = calculateTripStatus(t, t.bookedCount ?? 0).text;
+      const matchesStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'active' && status !== 'منتهية (مغلقة)') ||
+        (statusFilter === 'full' && status === 'مكتملة العدد') ||
+        (statusFilter === 'completed' && status === 'منتهية (مغلقة)');
+
+      return matchesQuery && matchesStatus;
+    });
+  }, [searchTerm, statusFilter, trips]);
+
+  const tripSummary = useMemo(
+    () => ({
+      total: trips.length,
+      active: trips.filter((t) => calculateTripStatus(t, t.bookedCount ?? 0).text !== 'منتهية (مغلقة)').length,
+      full: trips.filter((t) => calculateTripStatus(t, t.bookedCount ?? 0).text === 'مكتملة العدد').length,
+      completed: trips.filter((t) => calculateTripStatus(t, t.bookedCount ?? 0).text === 'منتهية (مغلقة)').length,
+    }),
+    [trips]
   );
 
   if (view === 'add') {
@@ -140,18 +173,53 @@ export default function TripsView({
         </button>
       </div>
 
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="rounded-2xl border border-white/70 bg-white/70 p-4 shadow-soft">
+          <p className="text-xs font-bold text-gray-500">إجمالي الرحلات</p>
+          <p className="mt-2 text-2xl font-extrabold text-gray-900">{tripSummary.total}</p>
+        </div>
+        <div className="rounded-2xl border border-white/70 bg-white/70 p-4 shadow-soft">
+          <p className="text-xs font-bold text-emerald-600">نشطة</p>
+          <p className="mt-2 text-2xl font-extrabold text-emerald-900">{tripSummary.active}</p>
+        </div>
+        <div className="rounded-2xl border border-white/70 bg-white/70 p-4 shadow-soft">
+          <p className="text-xs font-bold text-red-600">مكتملة</p>
+          <p className="mt-2 text-2xl font-extrabold text-red-900">{tripSummary.full}</p>
+        </div>
+        <div className="rounded-2xl border border-white/70 bg-white/70 p-4 shadow-soft">
+          <p className="text-xs font-bold text-gray-500">منتهية</p>
+          <p className="mt-2 text-2xl font-extrabold text-gray-900">{tripSummary.completed}</p>
+        </div>
+      </div>
+
       {/* Trips list */}
       <div className="rounded-2xl border border-white/70 bg-white/70 shadow-soft backdrop-blur-xl">
-        <div className="flex items-center justify-between border-b border-gray-100/80 p-6 pb-4">
+        <div className="flex flex-col gap-4 border-b border-gray-100/80 p-6 pb-4 lg:flex-row lg:items-center lg:justify-between">
           <h3 className="flex items-center gap-2 text-base font-extrabold text-gray-900">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
               <Bus className="h-5 w-5" />
             </span>
             قائمة الرحلات
           </h3>
-          <span className="rounded-full bg-emerald-600/10 px-3 py-1 text-xs font-bold text-emerald-700">
-            {trips.length} رحلة
-          </span>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="ابحث برقم الرحلة أو الوجهة..."
+              className="input-field w-full sm:w-64"
+            />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="input-field w-full sm:w-44"
+            >
+              <option value="all">كل الحالات</option>
+              <option value="active">نشطة</option>
+              <option value="full">مكتملة</option>
+              <option value="completed">منتهية</option>
+            </select>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[820px] text-right text-sm">
@@ -167,7 +235,14 @@ export default function TripsView({
               </tr>
             </thead>
             <tbody>
-              {trips.map((t) => {
+              {filteredTrips.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-6 py-8 text-center text-sm font-semibold text-gray-500">
+                    لا توجد رحلات تطابق البحث الحالي.
+                  </td>
+                </tr>
+              )}
+              {filteredTrips.map((t) => {
                 const pct = occupied(t);
                 const tripStatus = calculateTripStatus(t, t.bookedCount ?? 0);
                 return (

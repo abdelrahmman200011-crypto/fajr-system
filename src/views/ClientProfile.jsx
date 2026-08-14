@@ -16,11 +16,13 @@ import {
   RotateCcw,
   CircleCheck,
   CircleAlert,
+  MessageSquareText,
 } from 'lucide-react';
 import {
   formatSAR,
   invoiceTotals,
 } from '../data/mockData';
+import { buildReminderMessage } from '../services/ai';
 
 const GENDER_META = {
   ذكر: { icon: Venus, cls: 'text-sky-700' },
@@ -143,6 +145,17 @@ export default function ClientProfile({
 
   const StatusIcon = status.icon;
 
+  const reminderTrip = bookings[0]?.trip || null;
+  const reminderText = buildReminderMessage({
+    passenger: client,
+    trip: reminderTrip,
+    hotel: { name: reminderTrip?.hotelName || 'الفندق المخصص' },
+    notes: 'يرجى التأكد من استلام الحزمة قبل الساعة التاسعة مساءً.',
+  });
+  const whatsappLink = client.phone
+    ? `https://wa.me/966${String(client.phone).replace(/\D/g, '').slice(-9)}?text=${encodeURIComponent(reminderText)}`
+    : null;
+
   return (
     <div className="space-y-6">
       {/* Header / identity card */}
@@ -203,7 +216,7 @@ export default function ClientProfile({
           </div>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Field label="رقم الجوال" value={client.phone} ltr />
           <Field label="السجل / الإقامة" value={client.documentId} ltr />
           <Field label="العنوان" value={client.address} />
@@ -248,6 +261,35 @@ export default function ClientProfile({
           </p>
         </div>
       </div>
+
+      <section className="rounded-2xl border border-white/70 bg-white/70 p-6 shadow-soft backdrop-blur-xl">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10 text-violet-700">
+              <MessageSquareText className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-extrabold text-gray-900">تذكير واتساب ذكي</h3>
+              <p className="text-xs text-gray-500">رسالة مخصصة قبل الرحلة بناءً على بيانات العميل</p>
+            </div>
+          </div>
+          {whatsappLink && (
+            <a
+              href={whatsappLink}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-extrabold text-white shadow-lg shadow-emerald-700/20 transition hover:bg-emerald-500"
+            >
+              <MessageSquareText className="h-4 w-4" />
+              إرسال رسالة واتساب
+            </a>
+          )}
+        </div>
+
+        <div className="rounded-xl bg-violet-50 p-4 text-sm font-medium leading-7 text-violet-900">
+          {reminderText}
+        </div>
+      </section>
 
       {/* Trips history */}
       <section className="rounded-2xl border border-white/70 bg-white/70 p-6 shadow-soft backdrop-blur-xl">

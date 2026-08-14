@@ -32,18 +32,25 @@ body {
     margin: 10mm;
   }
 
+  html,
   body {
     background: #fff !important;
   }
 
-  /* Hide everything except the official manifests (portals under <body>) */
-  body *:not(#print-manifest):not(#print-manifest *):not(#print-invoice):not(#print-invoice *) {
+  body > *:not(#print-invoice) {
     display: none !important;
   }
 
-  #print-manifest,
-  #print-invoice {
+  #print-invoice,
+  #print-invoice > * {
     display: block !important;
+    visibility: visible !important;
+  }
+
+  #print-invoice {
+    width: 100% !important;
+    max-width: none !important;
+    position: static !important;
   }
 }
 

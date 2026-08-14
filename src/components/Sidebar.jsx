@@ -4,6 +4,8 @@ import {
   Users,
   ReceiptText,
   ShoppingCart,
+  BarChart3,
+  ShieldCheck,
   X,
 } from 'lucide-react';
 
@@ -13,6 +15,8 @@ export const NAV_TABS = [
   { id: 'trips', label: 'الرحلات', icon: Route },
   { id: 'passengers', label: 'المسافرون', icon: Users },
   { id: 'invoices', label: 'الفواتير والمالية', icon: ReceiptText },
+  { id: 'reports', label: 'التقارير', icon: BarChart3 },
+  { id: 'admin', label: 'لوحة الإدارة', icon: ShieldCheck },
 ];
 
 export default function Sidebar({ active, onNavigate, open, onClose }) {

@@ -95,41 +95,33 @@ export default function InvoicesView({
     <div className="space-y-6">
       {/* Summary statistics */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="rounded-2xl border border-white/70 bg-white/70 p-5 shadow-soft backdrop-blur-xl">
-          <p className="flex items-center gap-1.5 text-xs font-bold text-gray-500">
+        <div className="rounded-2xl bg-gradient-to-br from-slate-700 to-slate-900 p-5 text-white shadow-soft">
+          <p className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
             <ReceiptText className="h-4 w-4" />
             عدد الفواتير
           </p>
-          <p className="mt-2 text-2xl font-extrabold text-gray-900">
-            {summary.count}
-          </p>
+          <p className="mt-2 text-2xl font-extrabold">{summary.count}</p>
         </div>
-        <div className="rounded-2xl border border-white/70 bg-white/70 p-5 shadow-soft backdrop-blur-xl">
-          <p className="flex items-center gap-1.5 text-xs font-bold text-emerald-600">
+        <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 p-5 text-white shadow-soft">
+          <p className="flex items-center gap-1.5 text-xs font-bold text-emerald-100">
             <Calculator className="h-4 w-4" />
             إجمالي القيمة
           </p>
-          <p className="mt-2 text-2xl font-extrabold text-emerald-900">
-            {formatSAR(summary.total)}
-          </p>
+          <p className="mt-2 text-2xl font-extrabold">{formatSAR(summary.total)}</p>
         </div>
-        <div className="rounded-2xl border border-white/70 bg-white/70 p-5 shadow-soft backdrop-blur-xl">
-          <p className="flex items-center gap-1.5 text-xs font-bold text-amber-600">
+        <div className="rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 p-5 text-white shadow-soft">
+          <p className="flex items-center gap-1.5 text-xs font-bold text-amber-100">
             <Wallet className="h-4 w-4" />
             المحصّل
           </p>
-          <p className="mt-2 text-2xl font-extrabold text-amber-700">
-            {formatSAR(summary.collected)}
-          </p>
+          <p className="mt-2 text-2xl font-extrabold">{formatSAR(summary.collected)}</p>
         </div>
-        <div className="rounded-2xl border border-white/70 bg-white/70 p-5 shadow-soft backdrop-blur-xl">
-          <p className="flex items-center gap-1.5 text-xs font-bold text-gray-500">
+        <div className="rounded-2xl bg-gradient-to-br from-sky-600 to-blue-700 p-5 text-white shadow-soft">
+          <p className="flex items-center gap-1.5 text-xs font-bold text-sky-100">
             <CreditCard className="h-4 w-4" />
             المتبقي
           </p>
-          <p className="mt-2 text-2xl font-extrabold text-gray-900">
-            {formatSAR(summary.remaining)}
-          </p>
+          <p className="mt-2 text-2xl font-extrabold">{formatSAR(summary.remaining)}</p>
         </div>
       </div>
 

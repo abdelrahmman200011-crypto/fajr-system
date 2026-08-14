@@ -6,8 +6,11 @@ import {
   ArrowLeftRight,
   Building2,
   MapPin,
+  BellRing,
 } from 'lucide-react';
+import PendingBookingsPanel from '../components/PendingBookingsPanel';
 import { formatSAR } from '../data/mockData';
+import { buildSmartAlerts } from '../services/notifications';
 
 function StatCard({ label, value, hint, icon: Icon, gradient, iconClass }) {
   return (
@@ -30,7 +33,17 @@ function StatCard({ label, value, hint, icon: Icon, gradient, iconClass }) {
   );
 }
 
-export default function DashboardView({ stats, invoices, trips, onNavigate }) {
+export default function DashboardView({
+  stats,
+  invoices,
+  trips,
+  pendingBookings = [],
+  onNavigate,
+  onAddPendingBooking,
+  onApprovePendingBooking,
+}) {
+  const alerts = buildSmartAlerts({ trips, pendingBookings, invoices });
+
   return (
     <div className="space-y-6">
       {/* Welcome banner */}
@@ -88,6 +101,40 @@ export default function DashboardView({ stats, invoices, trips, onNavigate }) {
           iconClass="text-white"
         />
       </div>
+
+      <div className="rounded-2xl border border-white/70 bg-white/70 p-6 shadow-soft backdrop-blur-xl">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600">
+            <BellRing className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-lg font-extrabold text-gray-900">التنبيهات والتذكيرات</h3>
+            <p className="text-sm text-gray-500">تنبيهات ذكية تدعم المراجعة اليومية</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {alerts.length === 0 && (
+            <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-5 text-sm text-gray-500 md:col-span-2 xl:col-span-4">
+              لا توجد تنبيهات حاليًا. كل شيء يعمل بشكل طبيعي.
+            </div>
+          )}
+
+          {alerts.map((alert) => (
+            <div key={alert.type} className="rounded-xl border border-gray-100 bg-gray-50/80 p-4">
+              <p className="text-xs font-bold text-gray-500">{alert.title}</p>
+              <p className="mt-2 text-sm font-medium leading-6 text-gray-700">{alert.detail}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <PendingBookingsPanel
+        trips={trips}
+        initialItems={pendingBookings}
+        onAddBooking={onAddPendingBooking}
+        onApproveBooking={onApprovePendingBooking}
+      />
 
       {/* Bottom grid: invoices summary + trips snapshot */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">

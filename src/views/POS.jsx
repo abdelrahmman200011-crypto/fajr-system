@@ -74,7 +74,7 @@ export default function POS({
 
   useEffect(() => {
     const el = document.createElement('div');
-    el.id = 'pos-print-invoice';
+    el.id = 'print-invoice';
     document.body.appendChild(el);
     setPrintNode(el);
     return () => el.remove();
@@ -181,7 +181,11 @@ export default function POS({
         paymentMethod: methodRequired ? paymentMethod : '',
       });
 
-      setInvoiceToPrint(result.invoice);
+      setInvoiceToPrint({
+        ...result.invoice,
+        passenger: result.passenger,
+        trip: result.trip,
+      });
       setSuccess({
         invoiceId: result.invoice.id,
         passengerName: result.passenger.fullName,
@@ -198,7 +202,12 @@ export default function POS({
       setPaymentMethod('');
       setRoomNumber('');
       setBookingNotes('');
-      window.setTimeout(() => window.print(), 150);
+
+      window.setTimeout(() => {
+        requestAnimationFrame(() => {
+          window.print();
+        });
+      }, 250);
     } catch (err) {
       console.error('فشل تأكيد الحجز:', err);
       setError('تعذر تأكيد الحجز وإصدار الفاتورة، حاول مجدداً');
