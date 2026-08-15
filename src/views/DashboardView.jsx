@@ -9,10 +9,6 @@ import {
   CalendarRange,
 } from 'lucide-react';
 import PendingBookingsPanel from '../components/PendingBookingsPanel';
-import AIInsightsPanel from '../components/AIInsightsPanel';
-import AIControlsPanel from '../components/AIControlsPanel';
-import AIStatusDashboard from '../components/AIStatusDashboard';
-import AIRecommendations from '../components/AIRecommendations';
 import { formatSAR } from '../data/mockData';
 import { buildSmartAlerts } from '../services/notifications';
 import { calculateTripStatus } from '../services/trips';
@@ -354,30 +350,6 @@ export default function DashboardView({
             ))
           )}
         </div>
-      </div>
-
-      {/* AI Insights & Controls Section */}
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-        <AIInsightsPanel trips={trips} invoices={invoices} passengers={passengers} />
-        <AIControlsPanel
-          onGenerateReminders={async () => {
-            console.log('Generating reminders...');
-          }}
-          onSuggestBookings={async () => {
-            console.log('Generating booking suggestions...');
-          }}
-        />
-      </div>
-
-      {/* AI Status & Recommendations */}
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-        <AIStatusDashboard
-          systemHealth="optimal"
-          responseTime={245}
-          requestsProcessed={1842}
-          successRate={98.5}
-        />
-        <AIRecommendations />
       </div>
 
       {/* Pending Bookings Panel */}
