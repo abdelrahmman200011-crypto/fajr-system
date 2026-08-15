@@ -31,3 +31,11 @@ dist-ssr
 
 # Firebase local cache
 .firebase/
+
+# Firebase Functions local secrets
+functions/.env
+functions/.env.*
+
+# Vercel Groq proxy local secrets
+vercel-api/.env
+vercel-api/node_modules

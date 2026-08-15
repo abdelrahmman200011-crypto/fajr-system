@@ -1,5 +1,6 @@
 const DEFAULT_OLLAMA_URL = 'http://localhost:11434';
 const DEFAULT_GROQ_MODEL = 'llama-3.1-8b-instant';
+const GROQ_PROXY_URL = import.meta.env.VITE_GROQ_PROXY_URL || '';
 
 export async function checkOllamaAvailability(model = 'llama3.2') {
   try {
@@ -20,9 +21,8 @@ export async function checkOllamaAvailability(model = 'llama3.2') {
 }
 
 export function checkGroqAvailability(model = DEFAULT_GROQ_MODEL) {
-  const key = import.meta.env.VITE_GROQ_API_KEY;
   return {
-    available: Boolean(key),
+    available: Boolean(GROQ_PROXY_URL),
     model: model || DEFAULT_GROQ_MODEL,
     provider: 'Groq',
   };
@@ -52,37 +52,25 @@ export async function askLocalOllama(prompt, model = 'llama3.2') {
 }
 
 export async function askGroq(prompt, model = DEFAULT_GROQ_MODEL) {
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-  if (!apiKey) return null;
+  if (!GROQ_PROXY_URL) return null;
 
   try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const response = await fetch(GROQ_PROXY_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model,
-        messages: [
-          {
-            role: 'system',
-            content: 'أنت وكيل خدمة عملاء عربي متخصص في الحج والعمرة. أجب بدقة بالعربية، مختصرًا وواضحًا، وركز على المعلومات العملية فقط.',
-          },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.3,
-        max_tokens: 500,
+        prompt,
+        model: model || DEFAULT_GROQ_MODEL,
       }),
     });
 
     if (!response.ok) {
-      console.error('Groq API error:', await response.text());
+      console.error('Groq proxy error:', await response.text());
       return null;
     }
 
     const payload = await response.json();
-    return payload?.choices?.[0]?.message?.content?.trim() || null;
+    return payload?.content?.trim() || null;
   } catch (error) {
     console.error('فشل استدعاء Groq:', error);
     return null;
@@ -125,9 +113,8 @@ export async function generateBookingAgentReply({ question, trips = [], passenge
   const prompt = buildAICustomerPrompt({ question, trips, passengers, invoices });
 
   const groqModel = import.meta.env.VITE_GROQ_MODEL || 'llama-3.1-8b-instant';
-  const groqKey = import.meta.env.VITE_GROQ_API_KEY;
 
-  if (groqKey) {
+  if (GROQ_PROXY_URL) {
     const aiResponse = await askGroq(prompt, groqModel);
     if (aiResponse) return aiResponse;
   }
