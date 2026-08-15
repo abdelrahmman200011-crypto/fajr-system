@@ -29,16 +29,13 @@ import InvoicesView from './views/InvoicesView';
 import POS from './views/POS';
 import InvoiceDetailsView from './views/InvoiceDetailsView';
 import ClientProfile from './views/ClientProfile';
-import Analytics from './views/Analytics';
 import ReportsView from './views/ReportsView';
-import AdminDashboard from './views/AdminDashboard';
 import { invoiceTotals } from './data/mockData';
 import { calculateTripStatus } from './services/trips';
 import { buildInvoiceFromBooking, buildPaymentHistory } from './services/booking';
 import { useDashboardStats } from './hooks/useDashboardStats';
 import { useEnrichedInvoices } from './hooks/useEnrichedInvoices';
 import { createDocument, updateDocument, deleteDocument, bulkDelete } from './services/crud';
-import { buildBranchReport } from './services/reports';
 import { normalizePendingBooking } from './services/pendingBookings';
 
 const nextId = (list) =>
@@ -92,7 +89,6 @@ export default function App() {
   useEffect(() => setRooms(roomRows), [roomRows]);
 
   const stats = useDashboardStats(passengers, trips, invoices);
-  const branchReport = buildBranchReport(passengers, trips, invoices, packages, services);
 
   const addPendingBooking = (booking) => {
     const normalized = normalizePendingBooking(booking);
@@ -399,17 +395,6 @@ export default function App() {
         />
       );
       break;
-    case 'analytics':
-      view = (
-        <Analytics
-          passengers={passengers}
-          trips={trips}
-          invoices={invoices}
-          packages={packages}
-          services={services}
-        />
-      );
-      break;
     case 'reports':
       view = (
         <ReportsView
@@ -422,9 +407,6 @@ export default function App() {
           onCreatePendingBooking={addPendingBooking}
         />
       );
-      break;
-    case 'admin':
-      view = <AdminDashboard stats={stats} branchReport={branchReport} />;
       break;
     default:
       view = (
