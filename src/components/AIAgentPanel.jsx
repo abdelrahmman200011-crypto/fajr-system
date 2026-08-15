@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Bot, Sparkles, MessageSquareText, Send, CheckCircle2, Clock3 } from 'lucide-react';
-import { generateBookingAgentReply, checkOllamaAvailability, buildFinanceInsight } from '../services/ai';
+import {
+  generateBookingAgentReply,
+  checkOllamaAvailability,
+  checkGroqAvailability,
+  buildFinanceInsight,
+} from '../services/ai';
 import { buildPendingBooking, buildWhatsAppMessageForPending } from '../services/pendingBookings';
 
 export default function AIAgentPanel({ trips = [], passengers = [], invoices = [], onCreatePendingBooking }) {
@@ -8,10 +13,37 @@ export default function AIAgentPanel({ trips = [], passengers = [], invoices = [
   const [reply, setReply] = useState('');
   const [loading, setLoading] = useState(false);
   const [queueState, setQueueState] = useState('idle');
-  const [ollamaState, setOllamaState] = useState({ available: false, model: 'llama3.2' });
+  const [providerState, setProviderState] = useState({
+    available: false,
+    model: 'llama3.2',
+    provider: 'Ollama',
+  });
+
+  const quickPrompts = [
+    'إيه الرحلات المتاحة لمكة؟',
+    'هل توجد رحلات متبقية إلى المدينة؟',
+    'أريد تفاصيل حول حالة الدفع للعميل',
+    'أخبرني عن أفضل الرحلات المتاحة هذا الأسبوع',
+  ];
 
   useEffect(() => {
-    checkOllamaAvailability('llama3.2').then(setOllamaState);
+    const syncProviderState = async () => {
+      const groqState = checkGroqAvailability();
+      const ollamaState = await checkOllamaAvailability('llama3.2');
+
+      if (groqState.available) {
+        setProviderState({ ...groqState, provider: 'Groq' });
+        return;
+      }
+
+      setProviderState({
+        available: ollamaState.available,
+        model: ollamaState.model,
+        provider: ollamaState.available ? 'Ollama' : 'غير متصل',
+      });
+    };
+
+    syncProviderState();
   }, []);
 
   const financeInsight = useMemo(() => buildFinanceInsight({ invoices, passengers, trips }), [invoices, passengers, trips]);
@@ -69,12 +101,12 @@ export default function AIAgentPanel({ trips = [], passengers = [], invoices = [
             </div>
             <div>
               <h3 className="text-xl font-extrabold text-gray-900">وكيل خدمة العملاء الذكي</h3>
-              <p className="text-sm text-gray-500">يمكن تشغيله محليًا عبر Ollama/Open Source LLM</p>
+              <p className="text-sm text-gray-500">يدعم Groq إذا تم تفعيله عبر مفتاح API، أو Ollama محليًا</p>
             </div>
           </div>
-          <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ${ollamaState.available ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'}`}>
+          <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ${providerState.available ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'}`}>
             <Sparkles className="h-3.5 w-3.5" />
-            {ollamaState.available ? 'جاهز محليًا' : 'غير متصل'}
+            {providerState.available ? `${providerState.provider} جاهز` : 'غير متصل'}
           </span>
         </div>
       </div>
@@ -84,6 +116,19 @@ export default function AIAgentPanel({ trips = [], passengers = [], invoices = [
           <div className="mb-3 flex items-center gap-2 text-base font-extrabold text-gray-900">
             <MessageSquareText className="h-5 w-5 text-violet-600" />
             دردشة الوكيل
+          </div>
+
+          <div className="mb-3 flex flex-wrap gap-2">
+            {quickPrompts.map((prompt) => (
+              <button
+                key={prompt}
+                type="button"
+                onClick={() => setQuestion(prompt)}
+                className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700 transition hover:bg-violet-100"
+              >
+                {prompt}
+              </button>
+            ))}
           </div>
 
           <textarea
@@ -114,11 +159,11 @@ export default function AIAgentPanel({ trips = [], passengers = [], invoices = [
             </button>
           </div>
 
-          <div className="mt-4 rounded-xl bg-violet-50 p-4 text-sm font-medium text-violet-900">
+          <div className="mt-4 rounded-xl bg-violet-50 p-4 text-sm font-medium leading-7 text-violet-900">
             {reply || 'سيظهر رد الوكيل هنا تلقائيًا بعد السؤال.'}
           </div>
 
-          <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-bold text-emerald-800">
+          <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-bold leading-6 text-emerald-800">
             رسالة واتساب الجاهزة: {whatsappMessage}
           </div>
         </div>

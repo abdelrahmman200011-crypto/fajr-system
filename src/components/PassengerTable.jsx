@@ -121,20 +121,20 @@ export default function PassengerTable({
   }, [filtered.autoExpand]);
 
   return (
-    <section className="glass-card overflow-hidden">
+    <section className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-soft">
       {/* Toolbar */}
-      <div className="flex flex-col gap-4 border-b border-gray-200/60 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4 border-b border-slate-200 bg-slate-50/80 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className="flex items-center gap-2 text-lg font-extrabold text-gray-900">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600/10 text-emerald-700">
+          <h2 className="flex items-center gap-2 text-lg font-extrabold text-slate-900">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-green/10 text-primary-green">
               <Users className="h-5 w-5" />
             </span>
             قائمة المسافرين
-            <span className="rounded-full bg-emerald-600/10 px-2.5 py-0.5 text-sm font-bold text-emerald-700">
+            <span className="rounded-full bg-primary-green/10 px-2.5 py-0.5 text-sm font-bold text-primary-green">
               {filtered.rows.length}
             </span>
           </h2>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-slate-500">
             سجل الركاب المسجلين في رحلة العمرة الحالية
           </p>
         </div>

@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
+  collection,
+  doc,
+  getDocs,
+  query,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
+import { db } from '../firebase';
+import {
   Store,
   UserSearch,
   User,
@@ -71,6 +80,8 @@ export default function POS({
   const [submitting, setSubmitting] = useState(false);
   const [printNode, setPrintNode] = useState(null);
   const [invoiceToPrint, setInvoiceToPrint] = useState(null);
+  const [pendingBookings, setPendingBookings] = useState([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
 
   useEffect(() => {
     const el = document.createElement('div');
@@ -79,6 +90,44 @@ export default function POS({
     setPrintNode(el);
     return () => el.remove();
   }, []);
+
+  useEffect(() => {
+    const loadPendingBookings = async () => {
+      setPendingLoading(true);
+      try {
+        const q = query(
+          collection(db, 'pendingBookings'),
+          where('status', '==', 'معلق')
+        );
+        const snapshot = await getDocs(q);
+        setPendingBookings(
+          snapshot.docs.map((docSnap) => ({
+            id: docSnap.id,
+            ...docSnap.data(),
+          }))
+        );
+      } catch (error) {
+        console.error('فشل تحميل الحجوزات المعلقة:', error);
+        setPendingBookings([]);
+      } finally {
+        setPendingLoading(false);
+      }
+    };
+
+    loadPendingBookings();
+  }, []);
+
+  const handlePendingBookingStatus = async (bookingId, nextStatus) => {
+    try {
+      await updateDoc(doc(db, 'pendingBookings', bookingId), {
+        status: nextStatus,
+        updatedAt: new Date().toISOString(),
+      });
+      setPendingBookings((prev) => prev.filter((booking) => booking.id !== bookingId));
+    } catch (error) {
+      console.error('فشل تحديث حالة الحجز المعلق:', error);
+    }
+  };
 
   const selectedClient = passengers.find((p) => p.id === clientId) || null;
   const selectedTrip = trips.find((t) => t.id === tripId) || null;
@@ -242,7 +291,7 @@ export default function POS({
               <h1 className="text-xl font-extrabold sm:text-2xl">
                 نقطة البيع — حجز جديد
               </h1>
-<p className="mt-1 text-sm font-medium text-white/80">
+              <p className="mt-1 text-sm font-medium text-white/80">
                 نموذج واحد متواصل: اختر العميل، حدد الرحلة، أضف ملاحظات
                 الغرفة، ثم أكّد الدفع وأصدر الفاتورة
               </p>
@@ -254,6 +303,87 @@ export default function POS({
           </span>
         </div>
       </div>
+
+      <section className="rounded-2xl border border-amber-200 bg-white/80 p-5 shadow-soft backdrop-blur-xl">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-700">
+              <NotebookPen className="h-5 w-5" />
+            </span>
+            <div>
+              <h2 className="text-lg font-extrabold text-gray-900">
+                طلبات الحجز الذكية (معلقة)
+              </h2>
+              <p className="text-xs text-gray-500">
+                الحجوزات المرسلة من الوكيل الذكي والطلبات غير المؤكدة بعد
+              </p>
+            </div>
+          </div>
+          <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700 ring-1 ring-amber-200">
+            {pendingLoading ? 'جارٍ التحميل...' : `${pendingBookings.length} معلقة`}
+          </span>
+        </div>
+
+        {pendingLoading ? (
+          <div className="rounded-xl border border-dashed border-amber-200 bg-amber-50 px-4 py-6 text-center text-sm font-semibold text-amber-700">
+            جارٍ تحميل الطلبات المعلقة...
+          </div>
+        ) : pendingBookings.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center text-sm font-semibold text-gray-500">
+            لا توجد طلبات حجز معلقة حالياً.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {pendingBookings.map((booking) => (
+              <div
+                key={booking.id}
+                className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="space-y-1">
+                  <p className="text-base font-extrabold text-gray-900">
+                    {booking.customerName || booking.fullName || 'عميل غير مسمى'}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                    <span className="rounded-full bg-white px-2 py-1 ring-1 ring-gray-200">
+                      {booking.phone || '—'}
+                    </span>
+                    <span className="rounded-full bg-white px-2 py-1 ring-1 ring-gray-200">
+                      {booking.tripTitle || booking.tripName || 'رحلة غير محددة'}
+                    </span>
+                    <span className="rounded-full bg-white px-2 py-1 ring-1 ring-gray-200">
+                      {booking.source || 'AI'}
+                    </span>
+                  </div>
+                  {(booking.notes || booking.message || booking.details) && (
+                    <p className="text-sm text-gray-600">
+                      {booking.notes || booking.message || booking.details}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handlePendingBookingStatus(booking.id, 'مؤكد')}
+                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-emerald-700"
+                  >
+                    <CircleCheck className="h-4 w-4" />
+                    تأكيد
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePendingBookingStatus(booking.id, 'مرفوض')}
+                    className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-red-700"
+                  >
+                    <X className="h-4 w-4" />
+                    رفض
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       {success && (
         <div className="rounded-2xl border border-emerald-300 bg-gradient-to-l from-emerald-50 to-teal-50 p-5 shadow-soft sm:p-6">

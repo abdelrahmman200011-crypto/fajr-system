@@ -29,6 +29,7 @@ import InvoicesView from './views/InvoicesView';
 import POS from './views/POS';
 import InvoiceDetailsView from './views/InvoiceDetailsView';
 import ClientProfile from './views/ClientProfile';
+import Analytics from './views/Analytics';
 import ReportsView from './views/ReportsView';
 import AdminDashboard from './views/AdminDashboard';
 import { invoiceTotals } from './data/mockData';
@@ -398,6 +399,17 @@ export default function App() {
         />
       );
       break;
+    case 'analytics':
+      view = (
+        <Analytics
+          passengers={passengers}
+          trips={trips}
+          invoices={invoices}
+          packages={packages}
+          services={services}
+        />
+      );
+      break;
     case 'reports':
       view = (
         <ReportsView
@@ -469,7 +481,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 bg-islamic-pattern bg-pattern-sm">
+    <div className="min-h-screen bg-bg-light bg-islamic-pattern bg-pattern-sm text-slate-900">
       <div className="flex min-h-screen">
         <Sidebar
           active={activeView}
@@ -491,7 +503,7 @@ export default function App() {
             {view}
           </main>
 
-          <footer className="border-t border-gray-200/60 bg-white/40 px-6 py-4 text-center text-xs font-medium text-gray-400 backdrop-blur">
+          <footer className="border-t border-slate-200/80 bg-white/80 px-6 py-4 text-center text-xs font-medium text-slate-500 backdrop-blur">
             © 2026 فجر النسك لخدمات الحج والعمرة — نظام الإدارة المتكامل
           </footer>
         </div>

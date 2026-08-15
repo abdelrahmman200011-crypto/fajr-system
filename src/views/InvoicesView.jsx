@@ -95,28 +95,28 @@ export default function InvoicesView({
     <div className="space-y-6">
       {/* Summary statistics */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="rounded-2xl bg-gradient-to-br from-slate-700 to-slate-900 p-5 text-white shadow-soft">
-          <p className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
+        <div className="rounded-[24px] bg-gradient-to-br from-primary-green to-primary-green-deep p-5 text-white shadow-premium">
+          <p className="flex items-center gap-1.5 text-xs font-bold text-emerald-100">
             <ReceiptText className="h-4 w-4" />
             عدد الفواتير
           </p>
           <p className="mt-2 text-2xl font-extrabold">{summary.count}</p>
         </div>
-        <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 p-5 text-white shadow-soft">
-          <p className="flex items-center gap-1.5 text-xs font-bold text-emerald-100">
+        <div className="rounded-[24px] bg-gradient-to-br from-accent-gold to-[#d7ba58] p-5 text-primary-green shadow-premium">
+          <p className="flex items-center gap-1.5 text-xs font-bold text-primary-green/90">
             <Calculator className="h-4 w-4" />
             إجمالي القيمة
           </p>
           <p className="mt-2 text-2xl font-extrabold">{formatSAR(summary.total)}</p>
         </div>
-        <div className="rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 p-5 text-white shadow-soft">
-          <p className="flex items-center gap-1.5 text-xs font-bold text-amber-100">
+        <div className="rounded-[24px] bg-gradient-to-br from-emerald-600 to-teal-700 p-5 text-white shadow-premium">
+          <p className="flex items-center gap-1.5 text-xs font-bold text-emerald-100">
             <Wallet className="h-4 w-4" />
             المحصّل
           </p>
           <p className="mt-2 text-2xl font-extrabold">{formatSAR(summary.collected)}</p>
         </div>
-        <div className="rounded-2xl bg-gradient-to-br from-sky-600 to-blue-700 p-5 text-white shadow-soft">
+        <div className="rounded-[24px] bg-gradient-to-br from-sky-600 to-blue-700 p-5 text-white shadow-premium">
           <p className="flex items-center gap-1.5 text-xs font-bold text-sky-100">
             <CreditCard className="h-4 w-4" />
             المتبقي
@@ -126,7 +126,7 @@ export default function InvoicesView({
       </div>
 
       {/* Invoices table */}
-      <div className="rounded-2xl border border-white/70 bg-white/70 shadow-soft backdrop-blur-xl">
+      <div className="rounded-[24px] border border-slate-200 bg-white shadow-soft">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100/80 p-6 pb-4">
           <h3 className="flex items-center gap-2 text-base font-extrabold text-gray-900">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">

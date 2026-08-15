@@ -1,4 +1,5 @@
 const DEFAULT_OLLAMA_URL = 'http://localhost:11434';
+const DEFAULT_GROQ_MODEL = 'llama-3.1-8b-instant';
 
 export async function checkOllamaAvailability(model = 'llama3.2') {
   try {
@@ -16,6 +17,15 @@ export async function checkOllamaAvailability(model = 'llama3.2') {
   } catch (error) {
     return { available: false, model };
   }
+}
+
+export function checkGroqAvailability(model = DEFAULT_GROQ_MODEL) {
+  const key = import.meta.env.VITE_GROQ_API_KEY;
+  return {
+    available: Boolean(key),
+    model: model || DEFAULT_GROQ_MODEL,
+    provider: 'Groq',
+  };
 }
 
 export async function askLocalOllama(prompt, model = 'llama3.2') {
@@ -37,6 +47,44 @@ export async function askLocalOllama(prompt, model = 'llama3.2') {
     const payload = await response.json();
     return payload?.response?.trim() || null;
   } catch (error) {
+    return null;
+  }
+}
+
+export async function askGroq(prompt, model = DEFAULT_GROQ_MODEL) {
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: 'system',
+            content: 'أنت وكيل خدمة عملاء عربي متخصص في الحج والعمرة. أجب بدقة بالعربية، مختصرًا وواضحًا، وركز على المعلومات العملية فقط.',
+          },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.3,
+        max_tokens: 500,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('Groq API error:', await response.text());
+      return null;
+    }
+
+    const payload = await response.json();
+    return payload?.choices?.[0]?.message?.content?.trim() || null;
+  } catch (error) {
+    console.error('فشل استدعاء Groq:', error);
     return null;
   }
 }
@@ -74,10 +122,18 @@ export function buildTripAvailabilityReply({ question = '', trips = [] }) {
 
 export async function generateBookingAgentReply({ question, trips = [], passengers = [], invoices = [] }) {
   const fallback = buildTripAvailabilityReply({ question, trips });
-  const prompt = `أنت وكيل خدمة عملاء في منظومة حج وعمرة. اقرأ بيانات الرحلات التالية وقدم ردًا محددًا بالعربية. السؤال: ${question}\n\nالرحلات المتاحة:\n${(trips || []).map((trip) => `- ${trip.tripNumber || trip.destination}: ${trip.destination}, المقاعد: ${Number(trip.capacity || 0) - Number(trip.bookedCount || 0)}, تاريخ: ${trip.departure || 'غير محدد'}`).join('\n')}\n\nالهدف: أجب بشفافية، واذكر الرحلات المتاحة فقط، واطلب من العميل تأكيد الحجز أو طلب تفاصيل إضافية.`;
+  const prompt = buildAICustomerPrompt({ question, trips, passengers, invoices });
 
-  const aiResponse = await askLocalOllama(prompt, 'llama3.2');
-  if (aiResponse) return aiResponse;
+  const groqModel = import.meta.env.VITE_GROQ_MODEL || 'llama-3.1-8b-instant';
+  const groqKey = import.meta.env.VITE_GROQ_API_KEY;
+
+  if (groqKey) {
+    const aiResponse = await askGroq(prompt, groqModel);
+    if (aiResponse) return aiResponse;
+  }
+
+  const ollamaResponse = await askLocalOllama(prompt, 'llama3.2');
+  if (ollamaResponse) return ollamaResponse;
 
   return fallback;
 }
@@ -85,13 +141,83 @@ export async function generateBookingAgentReply({ question, trips = [], passenge
 export function buildReminderMessage({ passenger, trip, hotel, notes = '' }) {
   const fullName = passenger?.fullName || 'العزيز';
   const destination = trip?.destination || 'رحلة الحج والعمرة';
-  const gatheringPoint = trip?.gatheringPoint || 'أمام محطة رمسيس';
-  const roomNumber = passenger?.roomNumber || 'غير محدد';
-  const hotelName = hotel?.name || 'الفندق المخصص';
+  const gatheringPoint = trip?.gatheringPoint || 'أمام الفرع';
 
+  const passengerRoom = passenger?.roomNumber || '';
+  const tripPassengers = Array.isArray(trip?.passengers) ? trip.passengers : [];
+  const matchedTripPassenger = tripPassengers.find((row) => {
+    const rowName = row?.name || row?.fullName || '';
+    const rowId = row?.clientId || row?.id || '';
+    return (
+      (!rowId && rowName && passenger?.fullName && rowName === passenger.fullName) ||
+      (rowId && passenger?.id && String(rowId) === String(passenger.id)) ||
+      (rowName && passenger?.fullName && rowName.includes(passenger.fullName)) ||
+      (passenger?.fullName && rowName && passenger.fullName.includes(rowName))
+    );
+  });
+  const roomNumber =
+    passengerRoom ||
+    matchedTripPassenger?.roomNumber ||
+    matchedTripPassenger?.room ||
+    'غير محدد';
+
+  const hotelName = hotel?.name || trip?.hotelName || 'الفندق المخصص';
   const extraNotes = notes ? `\nملاحظات: ${notes}` : '';
 
   return `أهلاً ${fullName}، نذكرك برحلتك غدًا إلى ${destination}. نقطة التجمع: ${gatheringPoint}. رقم غرفتك في ${hotelName} هو ${roomNumber}. يرجى الالتزام بالتعليمات المرفقة.${extraNotes}\nرحلة سعيدة!`;
+}
+
+export function buildTripContextSummary({ trips = [], passengers = [], invoices = [] }) {
+  const activeTrips = (trips || []).slice(0, 8).map((trip) => {
+    const seatsLeft = Math.max(Number(trip?.capacity || 0) - Number(trip?.bookedCount || 0), 0);
+    return {
+      tripNumber: trip?.tripNumber || '—',
+      destination: trip?.destination || 'غير محدد',
+      departure: trip?.departure || 'غير محدد',
+      gatheringPoint: trip?.gatheringPoint || 'غير محدد',
+      seatsLeft,
+      hotelName: trip?.hotelName || 'غير محدد',
+      status: seatsLeft <= 0 ? 'مكتملة' : seatsLeft <= 3 ? 'قريبة من الاكتمال' : 'متاحة',
+    };
+  });
+
+  const invoiceTotal = (invoices || []).reduce((sum, invoice) => sum + Number(invoice?.paid || 0), 0);
+  const pendingCustomers = (passengers || []).filter((person) => person?.status !== 'canceled').length;
+
+  return `
+بيانات النظام الحالية:
+- عدد الرحلات المعروضة: ${activeTrips.length}
+- عدد المسافرين المسجلين: ${pendingCustomers}
+- إجمالي المحصل من الفواتير: ${invoiceTotal} ريال
+- أبرز الرحلات المتاحة:
+${activeTrips
+  .map(
+    (trip) =>
+      `  • ${trip.tripNumber} | ${trip.destination} | ${trip.departure} | المقاعد المتبقية: ${trip.seatsLeft} | نقطة التجمع: ${trip.gatheringPoint} | الفندق: ${trip.hotelName}`
+  )
+  .join('\n')}
+`;
+}
+
+export function buildAICustomerPrompt({ question, trips = [], passengers = [], invoices = [] }) {
+  const context = buildTripContextSummary({ trips, passengers, invoices });
+
+  return `أنت وكيل خدمة عملاء عربي متخصص في منظومة الحج والعمرة.
+الرد باللغة العربية الفصحى فقط.
+التزم بالبيانات الموجودة في النظام فقط، ولا تختلق معلومات.
+إذا لم توجد بيانات كافية، أخبر العميل بوضوح وقدم اقتراحًا عمليًا.
+
+قواعد الرد:
+- اجب بصياغة موجزة وواضحة.
+- ركز على الرحلات المتاحة، المقاعد، نقطة التجمع، المواعيد والهدايا/التذكيرات إذا لزم الأمر.
+- لا تذكر أي معلومة غير مؤكدة.
+- إذا كان السؤال عن الحجز أو الدفع، فاقترح الخطوة التالية بوضوح.
+
+السؤال: ${question}
+
+${context}
+
+الهدف: أعطِ إجابة عملية ومفيدة للعميل، مناسبة لنظام حج وعمرة، مع اقتراحات سريعة إذا كان ذلك مناسبًا.`;
 }
 
 export function buildFinanceInsight({ invoices = [], passengers = [], trips = [] }) {

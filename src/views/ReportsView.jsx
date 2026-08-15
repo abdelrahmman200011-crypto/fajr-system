@@ -91,29 +91,29 @@ export default function ReportsView({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-white/70 bg-white/70 p-6 shadow-soft backdrop-blur-xl">
+      <div className="rounded-[28px] border border-slate-200 bg-gradient-to-l from-primary-green to-primary-green-deep p-6 text-white shadow-premium">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-lg shadow-emerald-700/20">
-              <BarChart3 className="h-6 w-6" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/10">
+              <BarChart3 className="h-6 w-6 text-accent-gold" />
             </div>
             <div>
-              <h1 className="text-xl font-extrabold text-gray-900 sm:text-2xl">التقارير والإحصاءات</h1>
-              <p className="mt-1 text-sm text-gray-500">ملخص الأداء العام لأعمال الحج والعمرة</p>
+              <h1 className="text-xl font-extrabold sm:text-2xl">التقارير والإحصاءات</h1>
+              <p className="mt-1 text-sm text-emerald-50/80">ملخص الأداء العام لأعمال الحج والعمرة</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={handleExportCsv}
-              className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm font-bold text-white transition hover:bg-white/15"
             >
               <Download className="h-4 w-4" />
               تصدير CSV
             </button>
             <button
               onClick={handlePrintReport}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-accent-gold/30 bg-accent-gold px-3 py-2 text-sm font-bold text-primary-green transition hover:bg-[#d7ba58]"
             >
               <Printer className="h-4 w-4" />
               طباعة PDF

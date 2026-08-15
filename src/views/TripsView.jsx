@@ -149,16 +149,16 @@ export default function TripsView({
   return (
     <div className="space-y-6">
       {/* Page header + Add Trip button */}
-      <div className="flex flex-col gap-4 rounded-2xl border border-white/70 bg-white/70 p-6 shadow-soft backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 rounded-[28px] border border-slate-200 bg-gradient-to-l from-primary-green via-primary-green to-primary-green-deep p-6 text-white shadow-premium sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-700/25">
-            <Bus className="h-7 w-7 text-white" />
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/10">
+            <Bus className="h-7 w-7 text-accent-gold" />
           </div>
           <div>
-            <h1 className="text-xl font-extrabold text-gray-900 sm:text-2xl">
+            <h1 className="text-xl font-extrabold sm:text-2xl">
               الرحلات المسجلة
             </h1>
-            <p className="mt-1 text-sm font-medium text-gray-500">
+            <p className="mt-1 text-sm font-medium text-emerald-50/80">
               {trips.length} رحلة — اضغط على أي رحلة لعرض تفاصيلها
             </p>
           </div>
@@ -166,7 +166,7 @@ export default function TripsView({
         <button
           type="button"
           onClick={() => setTripView('add')}
-          className="btn-primary w-full sm:w-auto"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-accent-gold px-5 py-3 text-sm font-extrabold text-primary-green shadow-lg shadow-accent-gold/20 transition hover:bg-[#d7ba58] w-full sm:w-auto"
         >
           <Plus className="h-4 w-4" />
           أضف رحلة جديدة
@@ -174,26 +174,26 @@ export default function TripsView({
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div className="rounded-2xl border border-white/70 bg-white/70 p-4 shadow-soft">
-          <p className="text-xs font-bold text-gray-500">إجمالي الرحلات</p>
-          <p className="mt-2 text-2xl font-extrabold text-gray-900">{tripSummary.total}</p>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft">
+          <p className="text-xs font-bold text-slate-500">إجمالي الرحلات</p>
+          <p className="mt-2 text-2xl font-extrabold text-slate-900">{tripSummary.total}</p>
         </div>
-        <div className="rounded-2xl border border-white/70 bg-white/70 p-4 shadow-soft">
-          <p className="text-xs font-bold text-emerald-600">نشطة</p>
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-soft">
+          <p className="text-xs font-bold text-emerald-700">نشطة</p>
           <p className="mt-2 text-2xl font-extrabold text-emerald-900">{tripSummary.active}</p>
         </div>
-        <div className="rounded-2xl border border-white/70 bg-white/70 p-4 shadow-soft">
-          <p className="text-xs font-bold text-red-600">مكتملة</p>
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 shadow-soft">
+          <p className="text-xs font-bold text-red-700">مكتملة</p>
           <p className="mt-2 text-2xl font-extrabold text-red-900">{tripSummary.full}</p>
         </div>
-        <div className="rounded-2xl border border-white/70 bg-white/70 p-4 shadow-soft">
-          <p className="text-xs font-bold text-gray-500">منتهية</p>
-          <p className="mt-2 text-2xl font-extrabold text-gray-900">{tripSummary.completed}</p>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft">
+          <p className="text-xs font-bold text-slate-500">منتهية</p>
+          <p className="mt-2 text-2xl font-extrabold text-slate-900">{tripSummary.completed}</p>
         </div>
       </div>
 
       {/* Trips list */}
-      <div className="rounded-2xl border border-white/70 bg-white/70 shadow-soft backdrop-blur-xl">
+      <div className="rounded-[24px] border border-slate-200 bg-white shadow-soft">
         <div className="flex flex-col gap-4 border-b border-gray-100/80 p-6 pb-4 lg:flex-row lg:items-center lg:justify-between">
           <h3 className="flex items-center gap-2 text-base font-extrabold text-gray-900">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">

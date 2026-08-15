@@ -116,15 +116,15 @@ export default function PassengersView({
   /* ---------- List mode ---------- */
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 rounded-2xl border border-white/70 bg-white/70 p-6 shadow-soft backdrop-blur-xl lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4 rounded-[28px] border border-slate-200 bg-white p-6 shadow-soft lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h3 className="flex items-center gap-2 text-base font-extrabold text-gray-900">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600/10 text-emerald-700">
+          <h3 className="flex items-center gap-2 text-base font-extrabold text-slate-900">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-green/10 text-primary-green">
               <Users className="h-5 w-5" />
             </span>
             سجل المسافرين
           </h3>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-slate-500">
             إدارة كاملة لقاعدة بيانات المعتمرين في فروع الداير وجازان
           </p>
         </div>
@@ -149,7 +149,7 @@ export default function PassengersView({
           <button
             onClick={openAddForm}
             disabled={tripLocked || isFull}
-            className={`btn-primary ${
+            className={`inline-flex items-center justify-center rounded-2xl bg-accent-gold px-5 py-3 text-sm font-extrabold text-primary-green shadow-lg shadow-accent-gold/20 transition hover:bg-[#d7ba58] ${
               tripLocked || isFull ? 'cursor-not-allowed opacity-50' : ''
             }`}
           >
