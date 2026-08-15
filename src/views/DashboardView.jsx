@@ -115,6 +115,19 @@ export default function DashboardView({
     color: bookingColors[i % bookingColors.length],
   }));
 
+  const donutStops = (() => {
+    if (bookingBreakdown.length === 0) return 'bg-slate-100';
+    let cursor = 0;
+    const stops = bookingBreakdown.map((item, i) => {
+      const from = cursor;
+      const to = from + item.percent;
+      cursor = to;
+      const hex = ['#114b39', '#cda036', '#94a3b8', '#6ee7b7'][i % 4];
+      return `${hex} ${from}% ${to}%`;
+    });
+    return `conic-gradient(${stops.join(', ')})`;
+  })();
+
   const monthlyMap = new Map();
   (invoices || []).forEach((inv) => {
     const { paid } = invoiceTotals(inv, [], []);
@@ -253,10 +266,15 @@ export default function DashboardView({
           </div>
 
           <div className="rounded-3xl bg-slate-50 p-4">
-            <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-full bg-[conic-gradient(#114b39_0_42%,#cda036_42%_73%,#dfe6e3_73%_90%,#d7e8df_90%_100%)] shadow-inner">
+            <div
+              className="mx-auto flex h-36 w-36 items-center justify-center rounded-full shadow-inner"
+              style={{ background: donutStops }}
+            >
               <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-center">
                 <div>
-                  <p className="text-xl font-black text-slate-900">{topDestPercent}%</p>
+                  <p className="text-xl font-black text-slate-900">
+                    {topDestPercent > 0 ? `${topDestPercent}%` : '0%'}
+                  </p>
                   <p className="text-[10px] font-bold text-slate-500">{topDest}</p>
                 </div>
               </div>
@@ -293,6 +311,9 @@ export default function DashboardView({
               ) : (
                 monthlyRevenue.map(([key, value]) => (
                   <div key={key} className="flex flex-1 flex-col items-center gap-1">
+                    <span className="text-[9px] font-black text-slate-700">
+                      {value >= 1000 ? `${(value / 1000).toFixed(1)}k` : value}
+                    </span>
                     <span
                       className="w-full rounded-t-xl bg-gradient-to-t from-primary-green to-accent-gold"
                       style={{ height: `${Math.max(Math.round((value / maxMonthly) * 100), 4)}%` }}
