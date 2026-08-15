@@ -432,6 +432,7 @@ export default function App() {
           stats={stats}
           invoices={enrichedInvoices}
           trips={trips}
+          passengers={passengers}
           pendingBookings={pendingBookings}
           onNavigate={navigate}
           onAddPendingBooking={addPendingBooking}

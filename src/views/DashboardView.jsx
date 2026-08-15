@@ -4,9 +4,7 @@ import {
   Wallet,
   ArrowUpRight,
   Building2,
-  Car,
   BellRing,
-  MapPin,
   TrendingUp,
   CalendarRange,
 } from 'lucide-react';
@@ -17,6 +15,27 @@ import AIStatusDashboard from '../components/AIStatusDashboard';
 import AIRecommendations from '../components/AIRecommendations';
 import { formatSAR } from '../data/mockData';
 import { buildSmartAlerts } from '../services/notifications';
+import { calculateTripStatus } from '../services/trips';
+import { invoiceTotals } from '../data/mockData';
+
+const AR_MONTHS = [
+  'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+  'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
+];
+
+function formatTripDate(dateStr) {
+  if (!dateStr) return '—';
+  const dt = new Date(dateStr);
+  if (Number.isNaN(dt.getTime())) return String(dateStr);
+  return `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`;
+}
+
+function statusTone(text) {
+  if (text.includes('منتهية')) return 'bg-gray-100 text-gray-700 ring-1 ring-gray-200';
+  if (text.includes('انطلقت')) return 'bg-blue-100 text-blue-700 ring-1 ring-blue-200';
+  if (text.includes('مكتملة')) return 'bg-red-100 text-red-700 ring-1 ring-red-200';
+  return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200';
+}
 
 function StatCard({ label, value, hint, icon: Icon, iconBg, trend }) {
   return (
@@ -42,70 +61,78 @@ function StatCard({ label, value, hint, icon: Icon, iconBg, trend }) {
   );
 }
 
-const upcomingTrips = [
-  {
-    tripNo: 'TR-1042',
-    type: 'مكة',
-    date: '25/08/2026',
-    from: 'الرياض',
-    to: 'مكة',
-    vehicle: 'BUS-12',
-    seats: '28 / 40',
-    status: 'مؤكدة',
-    tone: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
-  },
-  {
-    tripNo: 'TR-1068',
-    type: 'المدينة',
-    date: '27/08/2026',
-    from: 'مكة',
-    to: 'المدينة',
-    vehicle: 'BUS-08',
-    seats: '15 / 35',
-    status: 'قيد التنفيذ',
-    tone: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
-  },
-  {
-    tripNo: 'TR-1101',
-    type: 'مكة',
-    date: '30/08/2026',
-    from: 'جدة',
-    to: 'مكة',
-    vehicle: 'BUS-17',
-    seats: '22 / 30',
-    status: 'مؤكدة',
-    tone: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
-  },
-  {
-    tripNo: 'TR-1154',
-    type: 'المدينة',
-    date: '02/09/2026',
-    from: 'الداير',
-    to: 'المدينة',
-    vehicle: 'BUS-05',
-    seats: '12 / 25',
-    status: 'قيد التنفيذ',
-    tone: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
-  },
-];
-
-const bookingBreakdown = [
-  { name: 'مكة', value: 42, color: 'bg-primary-green' },
-  { name: 'المدينة', value: 31, color: 'bg-accent-gold' },
-  { name: 'جدة', value: 17, color: 'bg-slate-300' },
-  { name: 'أخرى', value: 10, color: 'bg-emerald-200' },
-];
+const bookingColors = ['bg-primary-green', 'bg-accent-gold', 'bg-slate-300', 'bg-emerald-200'];
 
 export default function DashboardView({
   stats,
   invoices,
   trips,
+  passengers = [],
   pendingBookings = [],
   onNavigate,
   onAddPendingBooking,
   onApprovePendingBooking,
 }) {
   const alerts = buildSmartAlerts({ trips, pendingBookings, invoices });
+
+  const totalBookings = invoices.length;
+  const activeTrips = Number(stats?.activeTrips) || 0;
+  const totalRevenue = Number(stats?.totalRevenue) || 0;
+  const totalClients = Number(stats?.totalPassengers) || 0;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const upcomingTrips = (trips || [])
+    .map((trip) => ({
+      trip,
+      status: calculateTripStatus(trip, trip?.bookedCount ?? 0),
+    }))
+    .filter(({ trip }) => {
+      const end = new Date(trip?.returnDate || trip?.endDate);
+      return !(Number.isFinite(end.getTime()) && end < today);
+    })
+    .sort((a, b) => {
+      const da = new Date(a.trip?.departure || '');
+      const db = new Date(b.trip?.departure || '');
+      return (Number.isFinite(da.getTime()) ? da.getTime() : 0) - (Number.isFinite(db.getTime()) ? db.getTime() : 0);
+    })
+    .slice(0, 5);
+
+  const destinationCounts = (trips || []).reduce((acc, trip) => {
+    const dest = (trip?.destination || 'أخرى').trim();
+    const count = Number(trip?.bookedCount) || 0;
+    acc[dest] = (acc[dest] || 0) + count;
+    return acc;
+  }, {});
+  const breakdownEntries = Object.entries(destinationCounts).sort((a, b) => b[1] - a[1]);
+  const totalDestBookings = breakdownEntries.reduce((sum, [, count]) => sum + count, 0);
+  const topDest = breakdownEntries[0]?.[0] || '—';
+  const topDestPercent = totalDestBookings > 0 ? Math.round((breakdownEntries[0]?.[1] || 0) * 100 / totalDestBookings) : 0;
+  const bookingBreakdown = breakdownEntries.slice(0, 4).map(([name, count], i) => ({
+    name,
+    count,
+    percent: totalDestBookings > 0 ? Math.round(count * 100 / totalDestBookings) : 0,
+    color: bookingColors[i % bookingColors.length],
+  }));
+
+  const monthlyMap = new Map();
+  (invoices || []).forEach((inv) => {
+    const { paid } = invoiceTotals(inv, [], []);
+    const history = Array.isArray(inv?.paymentHistory) && inv.paymentHistory.length
+      ? inv.paymentHistory
+      : (paid > 0 ? [{ amount: paid, date: inv?.date }] : []);
+    history.forEach((entry) => {
+      if (!Number(entry?.amount)) return;
+      const dt = new Date(entry?.date);
+      if (!Number.isFinite(dt.getTime())) return;
+      const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+      monthlyMap.set(key, (monthlyMap.get(key) || 0) + Number(entry.amount));
+    });
+  });
+  const monthlyRevenue = [...monthlyMap.entries()]
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+    .slice(-7);
+  const maxMonthly = Math.max(...monthlyRevenue.map(([, v]) => v), 1);
 
   return (
     <div className="space-y-6">
@@ -132,44 +159,36 @@ export default function DashboardView({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="إجمالي الحجوزات"
-          value="128"
-          hint="إجمالي"
-          trend="+12%"
+          value={totalBookings.toLocaleString('en-US')}
+          hint="فاتورة مسجلة"
+          trend={`${invoices.length} فاتورة`}
           icon={Users}
           iconBg="bg-emerald-50 text-emerald-700"
         />
         <StatCard
           label="الرحلات القادمة"
-          value="14"
-          hint="قريبًا"
-          trend="+4%"
+          value={activeTrips.toLocaleString('en-US')}
+          hint="رحلة نشطة"
+          trend={`${trips.length} رحلة إجمالًا`}
           icon={Route}
           iconBg="bg-amber-50 text-amber-700"
         />
         <StatCard
           label="إجمالي الإيرادات"
-          value="152,840"
+          value={totalRevenue.toLocaleString('en-US')}
           hint="SAR"
-          trend="+18%"
+          trend={formatSAR(totalRevenue)}
           icon={Wallet}
           iconBg="bg-sky-50 text-sky-700"
         />
         <StatCard
-          label="المركبات المتاحة"
-          value="23"
-          hint="جاهزة"
-          trend="+3%"
-          icon={Car}
-          iconBg="bg-violet-50 text-violet-700"
-        />
-        <StatCard
           label="إجمالي العملاء"
-          value="1,256"
-          hint="مسجلين"
-          trend="+9%"
+          value={totalClients.toLocaleString('en-US')}
+          hint="عميل مسجل"
+          trend={`${stats?.aldaer || 0} الداير · ${stats?.jazan || 0} جازان`}
           icon={Building2}
           iconBg="bg-rose-50 text-rose-700"
         />
@@ -189,33 +208,39 @@ export default function DashboardView({
             <table className="min-w-full text-right text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-slate-500">
-                  <th className="pb-3 pr-2 font-bold">Trip No</th>
-                  <th className="pb-3 pr-2 font-bold">النوع</th>
-                  <th className="pb-3 pr-2 font-bold">التاريخ</th>
-                  <th className="pb-3 pr-2 font-bold">من</th>
-                  <th className="pb-3 pr-2 font-bold">إلى</th>
-                  <th className="pb-3 pr-2 font-bold">المركبة</th>
+                  <th className="pb-3 pr-2 font-bold">رقم الرحلة</th>
+                  <th className="pb-3 pr-2 font-bold">الوجهة</th>
+                  <th className="pb-3 pr-2 font-bold">تاريخ الانطلاق</th>
+                  <th className="pb-3 pr-2 font-bold">نقطة التجمع</th>
                   <th className="pb-3 pr-2 font-bold">المقاعد</th>
                   <th className="pb-3 pr-2 font-bold">الحالة</th>
                 </tr>
               </thead>
               <tbody>
-                {upcomingTrips.map((trip) => (
-                  <tr key={trip.tripNo} className="border-b border-slate-100 last:border-0">
-                    <td className="py-3 pr-2 font-bold text-slate-800">{trip.tripNo}</td>
-                    <td className="py-3 pr-2 text-slate-600">{trip.type}</td>
-                    <td className="py-3 pr-2 text-slate-600">{trip.date}</td>
-                    <td className="py-3 pr-2 text-slate-600">{trip.from}</td>
-                    <td className="py-3 pr-2 text-slate-600">{trip.to}</td>
-                    <td className="py-3 pr-2 text-slate-600">{trip.vehicle}</td>
-                    <td className="py-3 pr-2 text-slate-600">{trip.seats}</td>
-                    <td className="py-3 pr-2">
-                      <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${trip.tone}`}>
-                        {trip.status}
-                      </span>
+                {upcomingTrips.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-6 text-center text-slate-400">
+                      لا توجد رحلات قادمة حاليًا.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  upcomingTrips.map(({ trip, status }) => (
+                    <tr key={trip.id} className="border-b border-slate-100 last:border-0">
+                      <td className="py-3 pr-2 font-bold text-slate-800">{trip.tripNumber || '—'}</td>
+                      <td className="py-3 pr-2 text-slate-600">{trip.destination || '—'}</td>
+                      <td className="py-3 pr-2 text-slate-600">{formatTripDate(trip.departure)}</td>
+                      <td className="py-3 pr-2 text-slate-600">{trip.gatheringPoint || '—'}</td>
+                      <td className="py-3 pr-2 text-slate-600">
+                        {trip.bookedCount ?? 0} / {trip.capacity ?? 0}
+                      </td>
+                      <td className="py-3 pr-2">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${statusTone(status.text)}`}>
+                          {status.text}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -231,39 +256,53 @@ export default function DashboardView({
             <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-full bg-[conic-gradient(#114b39_0_42%,#cda036_42%_73%,#dfe6e3_73%_90%,#d7e8df_90%_100%)] shadow-inner">
               <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-center">
                 <div>
-                  <p className="text-xl font-black text-slate-900">42%</p>
-                  <p className="text-[10px] font-bold text-slate-500">مكة</p>
+                  <p className="text-xl font-black text-slate-900">{topDestPercent}%</p>
+                  <p className="text-[10px] font-bold text-slate-500">{topDest}</p>
                 </div>
               </div>
             </div>
 
             <div className="mt-5 space-y-3">
-              {bookingBreakdown.map((item) => (
-                <div key={item.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className={`h-2.5 w-2.5 rounded-full ${item.color}`} />
-                    <span className="text-sm font-bold text-slate-600">{item.name}</span>
+              {bookingBreakdown.length === 0 ? (
+                <p className="text-center text-sm text-slate-400">لا توجد حجوزات بعد.</p>
+              ) : (
+                bookingBreakdown.map((item) => (
+                  <div key={item.name} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className={`h-2.5 w-2.5 rounded-full ${item.color}`} />
+                      <span className="text-sm font-bold text-slate-600">{item.name}</span>
+                    </div>
+                    <span className="text-sm font-black text-slate-900">{item.percent}%</span>
                   </div>
-                  <span className="text-sm font-black text-slate-900">{item.value}%</span>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
           <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 p-4">
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-bold text-slate-600">إيرادات هذا الشهر</p>
+              <p className="text-sm font-bold text-slate-600">الإيرادات المحصّلة</p>
               <TrendingUp className="h-4 w-4 text-primary-green" />
             </div>
 
             <div className="flex h-20 items-end gap-2">
-              {[40, 58, 52, 78, 71, 88, 96].map((bar, i) => (
-                <span
-                  key={i}
-                  className="flex-1 rounded-t-xl bg-gradient-to-t from-primary-green to-accent-gold"
-                  style={{ height: `${bar}%` }}
-                />
-              ))}
+              {monthlyRevenue.length === 0 ? (
+                <div className="flex w-full items-center justify-center text-sm text-slate-400">
+                  لا توجد مدفوعات مسجلة بعد.
+                </div>
+              ) : (
+                monthlyRevenue.map(([key, value]) => (
+                  <div key={key} className="flex flex-1 flex-col items-center gap-1">
+                    <span
+                      className="w-full rounded-t-xl bg-gradient-to-t from-primary-green to-accent-gold"
+                      style={{ height: `${Math.max(Math.round((value / maxMonthly) * 100), 4)}%` }}
+                    />
+                    <span className="text-[9px] font-bold text-slate-400">
+                      {AR_MONTHS[Number(key.split('-')[1]) - 1]}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -298,7 +337,7 @@ export default function DashboardView({
 
       {/* AI Insights & Controls Section */}
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-        <AIInsightsPanel trips={trips} invoices={invoices} passengers={[]} />
+        <AIInsightsPanel trips={trips} invoices={invoices} passengers={passengers} />
         <AIControlsPanel
           onGenerateReminders={async () => {
             console.log('Generating reminders...');
